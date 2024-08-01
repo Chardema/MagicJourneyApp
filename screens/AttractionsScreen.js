@@ -1,8 +1,8 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {View, Text, Image, TextInput, Button, TouchableOpacity, StyleSheet, ScrollView, Modal} from 'react-native';
+import { View, Text, Image, TextInput, Button, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
 import axios from 'axios';
-import Icon from 'react-native-vector-icons/FontAwesome'; // Importation de l'icône
+import Icon from 'react-native-vector-icons/FontAwesome';
 import { formatImageName, importImage, useWindowWidth } from '../components/utils';
 import { setAttractions, setRawRideData, setFilteredRideData, setSearchTerm, toggleFavorite } from "../redux/actions/actions";
 import Navbar from "../components/Navbar";
@@ -13,7 +13,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Switch } from 'react-native';
 import { createSelector } from 'reselect';
 import * as Notifications from 'expo-notifications';
-import {useNavigation} from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const attractionNames = [
     'Disneyland Railroad Discoveryland Station',
@@ -83,7 +84,7 @@ const getFilteredRideData = createSelector(
     (rawRideData, searchTerm, filters) => {
         if (!rawRideData) return [];
 
-        return rawRideData.filter(ride => (
+        const filteredData = rawRideData.filter(ride => (
             (!filters.hideClosedRides || ride.status !== 'CLOSED') &&
             (!filters.showShortWaitTimesOnly || ride.waitTime < 40) &&
             (filters.selectedPark === 'all' || ride.parkId === filters.selectedPark) &&
@@ -91,6 +92,8 @@ const getFilteredRideData = createSelector(
             (filters.selectedLand === 'all' || ride.land === filters.selectedLand) &&
             ride.name.toLowerCase().includes(searchTerm.toLowerCase())
         ));
+
+        return filteredData.sort((a, b) => a.waitTime - b.waitTime);
     }
 );
 
@@ -104,14 +107,13 @@ Notifications.setNotificationHandler({
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
-    const { rawRideData, searchTerm, favorites, filters } = useSelector(state => ({
-        rawRideData: state.attractions.rawRideData,
-        searchTerm: state.attractions.searchTerm,
-        favorites: state.favorites.favorites,
-        filters: state.attractions.filters,
-    }));
 
+    const rawRideData = useSelector(getRawRideData);
+    const searchTerm = useSelector(getSearchTerm);
+    const favorites = useSelector(state => state.favorites.favorites);
+    const filters = useSelector(getFilters);
     const filteredRideData = useSelector(getFilteredRideData);
+
     const [viewMode, setViewMode] = useState('list');
     const [lastUpdate, setLastUpdate] = useState(null);
     const [previousWaitTimes, setPreviousWaitTimes] = useState({});
@@ -152,18 +154,55 @@ const AttractionsScreen = () => {
         };
     }, []);
 
+    const sendWaitTimeChangeNotification = async (rideName, previousWaitTime, currentWaitTime) => {
+        if (previousWaitTime !== currentWaitTime) {
+            const direction = currentWaitTime > previousWaitTime ? 'augmenté' : 'diminué';
+            const message = `Le temps d'attente pour ${rideName} a ${direction} à ${currentWaitTime} minutes.`;
+
+            try {
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: 'Changement de temps d\'attente',
+                        body: message,
+                        sound: true,
+                    },
+                    trigger: null,
+                });
+            } catch (error) {
+                console.error('Erreur lors de l\'envoi de la notification:', error);
+            }
+        }
+    };
+
     const fetchData = useCallback(async () => {
         try {
+            const cachedData = await AsyncStorage.getItem('attractionsData');
+            const cachedWaitTimes = await AsyncStorage.getItem('waitTimes');
+            let parsedData, parsedWaitTimes;
+
+            if (cachedData) {
+                parsedData = JSON.parse(cachedData);
+                dispatch(setRawRideData(parsedData));
+                dispatch(setAttractions(parsedData));
+            }
+
+            if (cachedWaitTimes) {
+                parsedWaitTimes = JSON.parse(cachedWaitTimes);
+                setPreviousWaitTimes(parsedWaitTimes);
+            }
+
             const response = await axios.get('https://eurojourney.azurewebsites.net/api/attractions');
             const rideData = response.data;
-            setLastUpdate(new Date());
 
-            const newPreviousWaitTimes = rideData.reduce((acc, ride) => {
+            await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
+
+            const newPreviousWaitTimes = {};
+            rideData.forEach(ride => {
                 const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
-                acc[ride._id] = {
+                newPreviousWaitTimes[ride._id] = {
                     currentWaitTime: ride.waitTime,
                     previousWaitTime: prevWaitTime || null,
-                    hadPreviousWaitTime: prevWaitTime != null
+                    hadPreviousWaitTime: !!prevWaitTime
                 };
 
                 if (prevWaitTime !== ride.waitTime) {
@@ -171,19 +210,18 @@ const AttractionsScreen = () => {
                         ...prevTimestamps,
                         [ride._id]: new Date().getTime()
                     }));
+                    sendWaitTimeChangeNotification(ride.name, prevWaitTime, ride.waitTime);
                 }
-
-                return acc;
-            }, {});
+            });
 
             setPreviousWaitTimes(newPreviousWaitTimes);
+            await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
 
-            const sortedRideData = rideData.sort((a, b) => a.waitTime - b.waitTime);
-            dispatch(setRawRideData(sortedRideData || []));
-            dispatch(setAttractions(sortedRideData || []));
+            setLastUpdate(new Date());
+            dispatch(setRawRideData(rideData));
+            dispatch(setAttractions(rideData));
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
-            setLastUpdate(new Date());
         }
     }, [dispatch, previousWaitTimes]);
 
@@ -241,11 +279,6 @@ const AttractionsScreen = () => {
     const getArrowIcon = (currentWaitTime, previousWaitTime, changeTimestamp) => {
         const now = Date.now();
         const timeElapsed = (now - changeTimestamp) / 1000 / 60;
-
-        console.log('Current wait time:', currentWaitTime);
-        console.log('Previous wait time:', previousWaitTime);
-        console.log('Change timestamp:', changeTimestamp);
-        console.log('Time elapsed (minutes):', timeElapsed);
 
         if (previousWaitTime != null && timeElapsed < 2) {
             if (currentWaitTime < previousWaitTime) {
@@ -410,7 +443,6 @@ const AttractionsScreen = () => {
     );
 };
 
-
 const styles = StyleSheet.create({
     bodyAttraction: {
         flex: 1,
@@ -423,6 +455,7 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
+        paddingTop: 40,
         borderBottomColor: '#E0E0E0',
     },
     headerText: {

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Button, Image, StyleSheet, Dimensions, ScrollView } from 'react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
 import useParkHours from "../components/hooks/useParkHours";
 import { formatTime, useWindowWidth } from '../components/utils';
-import { useWeather, useWeatherForecast} from "../components/hooks/weather";
+import { useWeather, useWeatherForecast } from "../components/hooks/weather";
 const Castle = require('../assets/Disneylandlogo.jpg');
 const Studios = require('../assets/Studioslogo.jpg');
 
@@ -13,16 +14,16 @@ const HoursScreen = () => {
     const parkHours = useParkHours();
     const width = useWindowWidth();
     const weather = useWeather();
-    const [selectedDay, setSelectedDay] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDay, setSelectedDay] = useState(new Date());
     const [showWeatherInfo, setShowWeatherInfo] = useState(false);
-    const weatherForecast = useWeatherForecast(selectedDay);
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const weatherForecast = useWeatherForecast(selectedDay.toISOString().split('T')[0]);
     const todayString = new Date().toISOString().split('T')[0];
-    const maxDateString = new Date();
-    maxDateString.setDate(maxDateString.getDate() + 30);
-    const maxDateStringFormatted = maxDateString.toISOString().split('T')[0];
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 30);
     const maxForecastDate = new Date();
     maxForecastDate.setDate(maxForecastDate.getDate() + 5);
-    const isForecastAvailable = new Date(selectedDay) < maxForecastDate;
+    const isForecastAvailable = selectedDay < maxForecastDate;
 
     const weatherDescriptions = {
         "clear sky": "ciel clair",
@@ -42,6 +43,19 @@ const HoursScreen = () => {
         setShowWeatherInfo(!showWeatherInfo);
     };
 
+    const showDatePicker = () => {
+        setDatePickerVisibility(true);
+    };
+
+    const hideDatePicker = () => {
+        setDatePickerVisibility(false);
+    };
+
+    const handleConfirm = (date) => {
+        setSelectedDay(date);
+        hideDatePicker();
+    };
+
     const isToday = (dateString) => {
         const today = new Date().toISOString().split('T')[0];
         return dateString === today;
@@ -52,15 +66,7 @@ const HoursScreen = () => {
     };
 
     const goToToday = () => {
-        setSelectedDay(new Date().toISOString().split('T')[0]);
-    };
-
-    const changeDay = (increment) => {
-        setSelectedDay(prevDay => {
-            let tempDate = new Date(prevDay);
-            tempDate.setDate(tempDate.getDate() + increment);
-            return tempDate.toISOString().split('T')[0];
-        });
+        setSelectedDay(new Date());
     };
 
     const renderScheduleInfo = (schedules, parkName, date) => {
@@ -68,7 +74,7 @@ const HoursScreen = () => {
             return <Text>Horaires de {parkName} non disponibles.</Text>;
         }
 
-        const selectedDaySchedules = getSchedulesForDate(schedules, date);
+        const selectedDaySchedules = getSchedulesForDate(schedules, date.toISOString().split('T')[0]);
         const operatingSchedule = selectedDaySchedules.find(s => s.type === "OPERATING");
         const extraHoursSchedule = selectedDaySchedules.find(s => s.type === "EXTRA_HOURS");
 
@@ -99,26 +105,25 @@ const HoursScreen = () => {
                 <Button onPress={toggleWeatherInfo} title={showWeatherInfo ? 'Masquer' : 'Changer de date'} />
                 {showWeatherInfo && (
                     <View style={styles.dateChangePanel}>
-                        {selectedDay !== todayString && (
+                        {selectedDay.toISOString().split('T')[0] !== todayString && (
                             <Button onPress={() => { goToToday(); setShowWeatherInfo(false); }} title="Aujourd'hui" />
                         )}
                         <View style={styles.datePickerContainer}>
                             <Text>Changez de date:</Text>
-                            <input
-                                type="date"
-                                value={selectedDay}
-                                onChange={e => {
-                                    setSelectedDay(e.target.value);
-                                    setShowWeatherInfo(false);
-                                }}
-                                min={todayString}
-                                max={maxDateStringFormatted}
+                            <Button onPress={showDatePicker} title="Sélectionner une date" />
+                            <DateTimePickerModal
+                                isVisible={isDatePickerVisible}
+                                mode="date"
+                                onConfirm={handleConfirm}
+                                onCancel={hideDatePicker}
+                                minimumDate={new Date()}
+                                maximumDate={maxDate}
                             />
                         </View>
                     </View>
                 )}
                 <View style={styles.weatherInfo}>
-                    {isToday(selectedDay) && weather && weather.main && (
+                    {isToday(selectedDay.toISOString().split('T')[0]) && weather && weather.main && (
                         <View>
                             <Image
                                 source={{ uri: `https://openweathermap.org/img/w/${weather.weather[0].icon}.png` }}
@@ -127,7 +132,7 @@ const HoursScreen = () => {
                             <Text> {Math.round(weather.main.temp)}°C </Text>
                         </View>
                     )}
-                    {!isToday(selectedDay) && isForecastAvailable && weatherForecast && weatherForecast.length > 0 ? (
+                    {!isToday(selectedDay.toISOString().split('T')[0]) && isForecastAvailable && weatherForecast && weatherForecast.length > 0 ? (
                         <View>
                             <Image
                                 source={{ uri: `https://openweathermap.org/img/w/${weatherForecast[0].weather[0].icon}.png` }}
@@ -137,7 +142,7 @@ const HoursScreen = () => {
                             <Text>Prévisions : {weatherDescriptions[weatherForecast[0].weather[0].main] || weatherForecast[0].weather[0].main}</Text>
                         </View>
                     ) : (
-                        !isToday(selectedDay) && !isForecastAvailable && <Text>Les prévisions météorologiques ne sont pas encore disponibles pour cette date.</Text>
+                        !isToday(selectedDay.toISOString().split('T')[0]) && !isForecastAvailable && <Text>Les prévisions météorologiques ne sont pas encore disponibles pour cette date.</Text>
                     )}
                 </View>
                 <View style={styles.allParks}>
@@ -159,7 +164,7 @@ const HoursScreen = () => {
 const styles = StyleSheet.create({
     body: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#f5f5f5',
     },
     container: {
         padding: 20,
@@ -170,6 +175,9 @@ const styles = StyleSheet.create({
         marginVertical: 20,
         width: '100%',
         alignItems: 'center',
+        padding: 10,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 10,
     },
     datePickerContainer: {
         marginTop: 10,
@@ -214,7 +222,5 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 });
-
-
 
 export default HoursScreen;

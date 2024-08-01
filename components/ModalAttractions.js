@@ -1,7 +1,6 @@
-// components/ModalAttractions.js
 import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons'; // Pour FaLightbulb
+import { FontAwesome } from '@expo/vector-icons';
 
 const AttractionModal = ({ isOpen, onClose, attractionDetails }) => {
     const [averageWaitTimes, setAverageWaitTimes] = useState({ morning: null, afternoon: null, evening: null });
@@ -37,13 +36,23 @@ const AttractionModal = ({ isOpen, onClose, attractionDetails }) => {
         }
 
         const { morning, afternoon, evening } = averageWaitTimes;
-        if (morning !== null && afternoon !== null && evening !== null) {
-            const minWaitTime = Math.min(morning, afternoon, evening);
-            if (minWaitTime === morning) return "Nous vous recommandons de faire cette attraction le matin.";
-            if (minWaitTime === afternoon) return "Nous vous recommandons de faire cette attraction l'après-midi.";
-            return "Nous vous recommandons de faire cette attraction le soir.";
+        let recommendation = null;
+        let minWaitTime = null;
+
+        if (morning !== null && (minWaitTime === null || morning < minWaitTime)) {
+            minWaitTime = morning;
+            recommendation = "Nous vous recommandons de faire cette attraction le matin.";
         }
-        return null;
+        if (afternoon !== null && (minWaitTime === null || afternoon < minWaitTime)) {
+            minWaitTime = afternoon;
+            recommendation = "Nous vous recommandons de faire cette attraction l'après-midi.";
+        }
+        if (evening !== null && (minWaitTime === null || evening < minWaitTime)) {
+            minWaitTime = evening;
+            recommendation = "Nous vous recommandons de faire cette attraction le soir.";
+        }
+
+        return recommendation;
     };
 
     return (

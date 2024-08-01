@@ -100,9 +100,6 @@ const FavoriteCard = ({ favorite, onRemove, isMinimalistMode }) => {
                     )}
                 </>
             )}
-            <TouchableOpacity onPress={handleToggleFavorite} style={styles.favoriteButton}>
-                <Text>{isFavorite ? '❤️' : '🤍'}</Text>
-            </TouchableOpacity>
         </TouchableOpacity>
     );
 };

@@ -1,73 +1,67 @@
-// components/AttractionsMap.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import MapView, { Marker, Polyline, Callout } from 'react-native-maps';
 import axios from 'axios';
 import * as Location from 'expo-location';
 
 const AttractionsMap = ({ attractions, getWaitTimeColor }) => {
     const [selectedAttraction, setSelectedAttraction] = useState(null);
-    const [route, setRoute] = useState(null);
+    const [route, setRoute] = useState([]);
     const [userLocation, setUserLocation] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
-    const [routeDuration, setRouteDuration] = useState(null);
 
     useEffect(() => {
-        const requestLocationPermission = async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setErrorMessage('Permission to access location was denied');
-                return;
+        (async () => {
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setErrorMessage('Permission to access location was denied');
+                    return;
+                }
+
+                const location = await Location.getCurrentPositionAsync({});
+                setUserLocation({
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                });
+            } catch (error) {
+                setErrorMessage('Error accessing location.');
             }
+        })();
+    }, []);
 
-            let location = await Location.getCurrentPositionAsync({});
-            setUserLocation({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
+    const calculateRoute = useCallback(async (start, end) => {
+        try {
+            const apiKey = "5b3ce3597851110001cf62483f9fb5d6194f46139e925f786fde38a0";
+            const response = await axios.get(`https://api.openrouteservice.org/v2/directions/foot-walking`, {
+                params: {
+                    api_key: apiKey,
+                    start: `${start.longitude},${start.latitude}`,
+                    end: `${end[1]},${end[0]}`,
+                }
             });
-        };
 
-        requestLocationPermission();
+            if (response.data.features && response.data.features.length > 0) {
+                const coordinates = response.data.features[0].geometry.coordinates.map(coord => ({
+                    latitude: coord[1],
+                    longitude: coord[0]
+                }));
+                setRoute(coordinates);
+            } else {
+                setErrorMessage('No route found.');
+                setRoute([]);
+            }
+        } catch (error) {
+            setErrorMessage('Error calculating route.');
+            setRoute([]);
+        }
     }, []);
 
     useEffect(() => {
         if (userLocation && selectedAttraction) {
-            calculateRoute([userLocation.latitude, userLocation.longitude], selectedAttraction.coordinates);
+            calculateRoute(userLocation, selectedAttraction.coordinates);
         }
-    }, [userLocation, selectedAttraction]);
-
-    const handleMarkerPress = (attraction) => {
-        setSelectedAttraction(attraction);
-        calculateRoute([userLocation.latitude, userLocation.longitude], attraction.coordinates);
-    };
-
-    const calculateRoute = async (startCoordinates, destinationCoordinates) => {
-        try {
-            const apiKey = process.env.apiurl;
-            const response = await axios.get(`https://api.openrouteservice.org/v2/directions/foot-walking?api_key=${apiKey}&start=${startCoordinates[1]},${startCoordinates[0]}&end=${destinationCoordinates[1]},${destinationCoordinates[0]}`);
-            if (response.data.features && response.data.features.length > 0) {
-                const coordinates = response.data.features[0].geometry.coordinates;
-                const latLngs = coordinates.map(coord => ({ latitude: coord[1], longitude: coord[0] }));
-                setRoute(latLngs);
-
-                // Mise à jour de la durée de l'itinéraire
-                const durationSeconds = response.data.features[0].properties.segments.reduce((total, segment) => total + segment.duration, 0);
-                const durationMinutes = Math.round(durationSeconds / 60); // Conversion en minutes
-                setRouteDuration(durationMinutes);
-
-                setErrorMessage('');
-            } else {
-                setErrorMessage("Aucun itinéraire trouvé.");
-                setRoute(null);
-                setRouteDuration(null);
-            }
-        } catch (error) {
-            console.error('Erreur lors du calcul de l’itinéraire :', error);
-            setErrorMessage("Erreur lors du calcul de l'itinéraire.");
-            setRoute(null);
-            setRouteDuration(null);
-        }
-    };
+    }, [userLocation, selectedAttraction, calculateRoute]);
 
     return (
         <View style={styles.container}>
@@ -82,28 +76,25 @@ const AttractionsMap = ({ attractions, getWaitTimeColor }) => {
                 showsUserLocation={true}
             >
                 {attractions.map((attraction) =>
-                    attraction.coordinates && Array.isArray(attraction.coordinates) && attraction.coordinates.length === 2 ? (
+                    attraction.coordinates ? (
                         <Marker
-                            key={attraction.id}
+                            key={attraction._id}
                             coordinate={{
                                 latitude: attraction.coordinates[0],
                                 longitude: attraction.coordinates[1],
                             }}
-                            pinColor={getWaitTimeColor(attraction)}
-                            onPress={() => handleMarkerPress(attraction)}
+                            pinColor={getWaitTimeColor ? getWaitTimeColor(attraction) : 'red'}
+                            onPress={() => setSelectedAttraction(attraction)}
                         >
-                            <MapView.Callout>
+                            <Callout>
                                 <View>
                                     <Text>{attraction.name}</Text>
-                                    {selectedAttraction && selectedAttraction.id === attraction.id && routeDuration && (
-                                        <Text>Durée à pied : {routeDuration} min</Text>
-                                    )}
                                 </View>
-                            </MapView.Callout>
+                            </Callout>
                         </Marker>
                     ) : null
                 )}
-                {route && (
+                {route.length > 0 && (
                     <Polyline
                         coordinates={route}
                         strokeColor="blue"
@@ -111,18 +102,18 @@ const AttractionsMap = ({ attractions, getWaitTimeColor }) => {
                     />
                 )}
             </MapView>
-            {errorMessage && (
+            {errorMessage ? (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorMessage}>{errorMessage}</Text>
                 </View>
-            )}
+            ) : null}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject,
+        flex: 1,
     },
     map: {
         ...StyleSheet.absoluteFillObject,
