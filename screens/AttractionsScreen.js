@@ -15,87 +15,7 @@ import { createSelector } from 'reselect';
 import * as Notifications from 'expo-notifications';
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-export const attractionNames = [
-    'Disneyland Railroad Discoveryland Station',
-    'Disneyland Railroad Fantasyland Station',
-    'Disneyland Railroad Main Street Station',
-    'Disneyland Railroad',
-    'Orbitron®',
-    'Meet Mickey Mouse',
-    'Frontierland Playground',
-    'Disneyland Railroad Frontierland Depot',
-    'Pirate Galleon',
-    'Indiana Jones™ and the Temple of Peril',
-    'La Cabane des Robinson',
-    'Big Thunder Mountain',
-    "Mad Hatter's Tea Cups",
-    'Les Voyages de Pinocchio',
-    'Casey Jr. – le Petit Train du Cirque',
-    'Phantom Manor',
-    'Star Wars Hyperspace Mountain',
-    'Star Tours: The Adventures Continue*',
-    'Thunder Mesa Riverboat Landing',
-    "Alice's Curious Labyrinth",
-    "Buzz Lightyear Laser Blast",
-    'Main Street Vehicles',
-    "Peter Pan's Flight",
-    'Princess Pavilion',
-    'Dumbo the Flying Elephant',
-    "Le Passage Enchanté d'Aladdin",
-    'Autopia, presented by Avis',
-    'Le Carrousel de Lancelot ',
-    'Les Mystères du Nautilus',
-    'La Tanière du Dragon',
-    "Rustler Roundup Shootin' Gallery",
-    'Adventure Isle',
-    'Welcome to Starport: A Star Wars Encounter',
-    "Blanche-Neige et les Sept Nains®",
-    "Mickey’s PhilharMagic",
-    'Pirates of the Caribbean',
-    '"it\'s a small world"',
-    "Le Pays des Contes de Fées",
-    "Pirates' Beach",
-    "Avengers Assemble: Flight Force",
-    "Cars ROAD TRIP",
-    "Spider-Man W.E.B. Adventure",
-    "Cars Quatre Roues Rallye",
-    "Toy Soldiers Parachute Drop",
-    "RC Racer",
-    "The Twilight Zone Tower of Terror",
-    "Crush's Coaster",
-    "Ratatouille: The Adventure",
-    "Slinky® Dog Zigzag Spin",
-    "Les Tapis Volants - Flying Carpets Over Agrabah®"
-];
-export const attractionImages = attractionNames.reduce((acc, name) => {
-    const imageName = formatImageName(name);
-    acc[name] = importImage(imageName);
-    return acc;
-}, {});
-
-// Sélecteurs avec reselect pour assurer la mémorisation
-const getRawRideData = state => state.attractions.rawRideData;
-const getSearchTerm = state => state.attractions.searchTerm;
-const getFilters = state => state.attractions.filters;
-
-const getFilteredRideData = createSelector(
-    [getRawRideData, getSearchTerm, getFilters],
-    (rawRideData, searchTerm, filters) => {
-        if (!rawRideData) return [];
-
-        const filteredData = rawRideData.filter(ride => (
-            (!filters.hideClosedRides || ride.status !== 'CLOSED') &&
-            (!filters.showShortWaitTimesOnly || ride.waitTime < 40) &&
-            (filters.selectedPark === 'all' || ride.parkId === filters.selectedPark) &&
-            (filters.selectedType === 'all' || ride.type === filters.selectedType) &&
-            (filters.selectedLand === 'all' || ride.land === filters.selectedLand) &&
-            ride.name.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
-
-        return filteredData.sort((a, b) => a.waitTime - b.waitTime);
-    }
-);
+import {attractionImages, getFilteredRideData, getRawRideData, getFilters, getSearchTerm} from '../components/utils';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -107,13 +27,12 @@ Notifications.setNotificationHandler({
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
-
+    const [error, setError] = useState(null);
     const rawRideData = useSelector(getRawRideData);
     const searchTerm = useSelector(getSearchTerm);
     const favorites = useSelector(state => state.favorites.favorites);
     const filters = useSelector(getFilters);
     const filteredRideData = useSelector(getFilteredRideData);
-
     const [viewMode, setViewMode] = useState('list');
     const [lastUpdate, setLastUpdate] = useState(null);
     const [previousWaitTimes, setPreviousWaitTimes] = useState({});
@@ -222,6 +141,14 @@ const AttractionsScreen = () => {
             dispatch(setAttractions(rideData));
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
+            setError(error);
+        }
+        if (error) {
+            return (
+                <View style={styles.container}>
+                    <Text style={styles.errorMessage}>Une erreur est survenue : {error.message}</Text>
+                </View>
+            );
         }
     }, [dispatch, previousWaitTimes]);
 
@@ -368,7 +295,7 @@ const AttractionsScreen = () => {
                 </ScrollView>
             ) : (
                 <View style={{ height: '80vh', width: '100vw' }}>
-                    <AttractionsMap attractions={filteredRideData} getWaitTimeColor={(waitTime) => <div>{waitTime} min</div>} />
+                    <AttractionsMap attractions={filteredRideData} getWaitTimeColor={(waitTime) => <Text>{waitTime} min</Text>} />
                 </View>
             )}
             <Modal
