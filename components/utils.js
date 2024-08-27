@@ -31,10 +31,15 @@ export const useWindowWidth = () => {
     const [width, setWidth] = useState(Dimensions.get('window').width);
 
     useEffect(() => {
-        const handleResize = () => setWidth(Dimensions.get('window').width);
-        Dimensions.addEventListener('change', handleResize);
+        const handleResize = ({ window }) => setWidth(window.width);
 
-        return () => Dimensions.removeEventListener('change', handleResize);
+        // Utiliser la nouvelle API
+        const subscription = Dimensions.addEventListener('change', handleResize);
+
+        return () => {
+            // Utiliser la méthode correcte pour enlever l'écouteur
+            subscription?.remove();
+        };
     }, []);
 
     return width;

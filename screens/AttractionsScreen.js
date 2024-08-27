@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { View, Text, Image, TextInput, Button, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { formatImageName, importImage, useWindowWidth } from '../components/utils';
+import { useWindowWidth } from '../components/utils';
 import { setAttractions, setRawRideData, setFilteredRideData, setSearchTerm, toggleFavorite } from "../redux/actions/actions";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
@@ -11,93 +11,41 @@ import AttractionsMap from "../components/AttractionsMap";
 import AttractionModal from '../components/ModalAttractions';
 import { Picker } from '@react-native-picker/picker';
 import { Switch } from 'react-native';
-import { createSelector } from 'reselect';
-import * as Notifications from 'expo-notifications';
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {attractionImages, getFilteredRideData, getRawRideData, getFilters, getSearchTerm} from '../components/utils';
-
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
-});
+import { attractionImages, getFilteredRideData, getRawRideData, getFilters, getSearchTerm } from '../components/utils';
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
-    const [error, setError] = useState(null);
     const rawRideData = useSelector(getRawRideData);
     const searchTerm = useSelector(getSearchTerm);
     const favorites = useSelector(state => state.favorites.favorites);
     const filters = useSelector(getFilters);
     const filteredRideData = useSelector(getFilteredRideData);
     const [viewMode, setViewMode] = useState('list');
-    const [lastUpdate, setLastUpdate] = useState(null);
     const [previousWaitTimes, setPreviousWaitTimes] = useState({});
     const [changeTimestamps, setChangeTimestamps] = useState({});
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedAttraction, setSelectedAttraction] = useState(null);
     const [filtersModalVisible, setFiltersModalVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [initialLoad, setInitialLoad] = useState(false); // Pour éviter le rechargement
     const width = useWindowWidth();
     const navigation = useNavigation();
 
+    // Enlève le header par défaut
     useEffect(() => {
         navigation.setOptions({ headerShown: false });
     }, [navigation]);
 
-    useEffect(() => {
-        const registerForPushNotificationsAsync = async () => {
-            try {
-                const { status } = await Notifications.getPermissionsAsync();
-                if (status !== 'granted') {
-                    const finalStatus = await Notifications.requestPermissionsAsync();
-                    if (finalStatus.status !== 'granted') {
-                        alert('Vous devez autoriser les notifications pour cette application.');
-                    }
-                }
-            } catch (error) {
-                console.error('Erreur lors de la demande de permissions de notification:', error);
-            }
-        };
-
-        registerForPushNotificationsAsync();
-
-        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-            console.log('Notification reçue:', notification);
-        });
-
-        return () => {
-            Notifications.removeNotificationSubscription(notificationListener);
-        };
-    }, []);
-
-    const sendWaitTimeChangeNotification = async (rideName, previousWaitTime, currentWaitTime) => {
-        if (previousWaitTime !== currentWaitTime) {
-            const direction = currentWaitTime > previousWaitTime ? 'augmenté' : 'diminué';
-            const message = `Le temps d'attente pour ${rideName} a ${direction} à ${currentWaitTime} minutes.`;
-
-            try {
-                await Notifications.scheduleNotificationAsync({
-                    content: {
-                        title: 'Changement de temps d\'attente',
-                        body: message,
-                        sound: true,
-                    },
-                    trigger: null,
-                });
-            } catch (error) {
-                console.error('Erreur lors de l\'envoi de la notification:', error);
-            }
-        }
-    };
-
+    // Fonction pour récupérer les données
     const fetchData = useCallback(async () => {
         try {
+            setLoading(true);
             const cachedData = await AsyncStorage.getItem('attractionsData');
             const cachedWaitTimes = await AsyncStorage.getItem('waitTimes');
-            let parsedData, parsedWaitTimes;
+            let parsedData = [];
+            let parsedWaitTimes = {};
 
             if (cachedData) {
                 parsedData = JSON.parse(cachedData);
@@ -114,6 +62,8 @@ const AttractionsScreen = () => {
             const rideData = response.data;
 
             await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
+            dispatch(setRawRideData(rideData));
+            dispatch(setAttractions(rideData));
 
             const newPreviousWaitTimes = {};
             rideData.forEach(ride => {
@@ -123,86 +73,66 @@ const AttractionsScreen = () => {
                     previousWaitTime: prevWaitTime || null,
                     hadPreviousWaitTime: !!prevWaitTime
                 };
-
-                if (prevWaitTime !== ride.waitTime) {
-                    setChangeTimestamps(prevTimestamps => ({
-                        ...prevTimestamps,
-                        [ride._id]: new Date().getTime()
-                    }));
-                    sendWaitTimeChangeNotification(ride.name, prevWaitTime, ride.waitTime);
-                }
             });
 
             setPreviousWaitTimes(newPreviousWaitTimes);
             await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
-
-            setLastUpdate(new Date());
-            dispatch(setRawRideData(rideData));
-            dispatch(setAttractions(rideData));
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
-            setError(error);
-        }
-        if (error) {
-            return (
-                <View style={styles.container}>
-                    <Text style={styles.errorMessage}>Une erreur est survenue : {error.message}</Text>
-                </View>
-            );
+        } finally {
+            setLoading(false);
+            setInitialLoad(true);  // Indiquer que le chargement initial est terminé
         }
     }, [dispatch, previousWaitTimes]);
 
+    // Fetch des données lors du premier montage et toutes les minutes
     useEffect(() => {
-        fetchData();
-        const intervalId = setInterval(fetchData, 60000); // Toutes les minutes
-        return () => clearInterval(intervalId);
-    }, [fetchData]);
+        if (!initialLoad) {
+            fetchData();
+        }
+        const intervalId = setInterval(() => {
+            fetchData();
+        }, 60000); // Met à jour toutes les 60 secondes
 
+        return () => clearInterval(intervalId); // Nettoie l'intervalle lors du démontage du composant
+    }, [fetchData, initialLoad]);
+
+    // Met à jour les données filtrées
     useEffect(() => {
-        if (rawRideData) {
+        if (rawRideData && initialLoad) {
             dispatch(setFilteredRideData(filteredRideData));
         }
-    }, [rawRideData, searchTerm, filters, dispatch, filteredRideData]);
+    }, [rawRideData, searchTerm, filters, dispatch, filteredRideData, initialLoad]);
 
+    // Gestion du changement de filtre
     const handleFilterChange = (filter, value) => {
         dispatch({ type: 'SET_FILTER', payload: { filter, value } });
     };
 
+    // Gestion de la recherche
     const handleSearchChange = (text) => {
         dispatch(setSearchTerm(text));
     };
 
+    // Gestion des favoris
     const handleToggleFavorite = async (attractionId) => {
-        if (attractionId) {
+        try {
+            console.log("Toggling favorite for:", attractionId);
             dispatch(toggleFavorite(attractionId));
-
-            const attraction = rawRideData.find(ride => ride._id === attractionId);
-            const message = attraction
-                ? `${attraction.name} a été ajouté à vos favoris!`
-                : "Attraction ajoutée à vos favoris!";
-
-            try {
-                await Notifications.scheduleNotificationAsync({
-                    content: {
-                        title: "Favori ajouté",
-                        body: message,
-                        sound: true,
-                    },
-                    trigger: { seconds: 1 },
-                });
-            } catch (error) {
-                console.error('Erreur lors de l\'envoi de la notification:', error);
-            }
-        } else {
-            console.error("Invalid attraction ID:", attractionId);
+            // Désactiver le bouton ici pour empêcher des clics multiples rapides
+        } catch (error) {
+            console.error("Erreur lors de l'ajout aux favoris:", error);
         }
     };
 
+
+    // Ouverture du modal avec les détails de l'attraction
     const openModalWithAttraction = (attraction) => {
         setSelectedAttraction(attraction);
         setModalOpen(true);
     };
 
+    // Gestion des icônes de changement de temps d'attente
     const getArrowIcon = (currentWaitTime, previousWaitTime, changeTimestamp) => {
         const now = Date.now();
         const timeElapsed = (now - changeTimestamp) / 1000 / 60;
@@ -220,6 +150,14 @@ const AttractionsScreen = () => {
     };
 
     const allRidesClosed = rawRideData?.length > 0 && rawRideData.every(ride => ride.status === 'CLOSED');
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text>Chargement des attractions...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.bodyAttraction}>
@@ -385,11 +323,6 @@ const styles = StyleSheet.create({
         paddingTop: 40,
         borderBottomColor: '#E0E0E0',
     },
-    headerText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333333',
-    },
     container: {
         padding: 15,
     },
@@ -493,9 +426,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    waitTimeHigh: {
-        backgroundColor: '#FF6347',
     },
     waitTimeFavorite: {
         backgroundColor: '#FFD700',

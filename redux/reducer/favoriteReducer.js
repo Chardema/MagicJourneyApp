@@ -8,6 +8,7 @@ const initialState = {
 };
 
 const favoritesReducer = (state = initialState, action) => {
+    console.log('Action Received:', action);
     switch (action.type) {
         case SET_ATTRACTIONS:
             return {
@@ -24,9 +25,13 @@ const favoritesReducer = (state = initialState, action) => {
                 };
             } else {
                 const newFavorite = state.attractions.find(attr => attr._id === attractionId);
+                if (!newFavorite) {
+                    console.error("Attraction not found:", attractionId);
+                    return state;
+                }
                 return {
                     ...state,
-                    favorites: [...state.favorites, newFavorite],
+                    favorites: [...new Set([...state.favorites, newFavorite])], // Utilisation de Set pour éviter les doublons
                 };
             }
 
