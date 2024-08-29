@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'green',
     },
     yellow: {
-        backgroundColor: 'yellow',
+        backgroundColor: 'orange',
     },
     red: {
         backgroundColor: 'red',

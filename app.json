@@ -7,9 +7,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonx505.MagicJourney",
+      "bundleIdentifier": "org.reactjs.native.example.MagicJourny",
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "This app uses notifications to notify you about favorites."
+        "NSUserNotificationUsageDescription": "This app uses notifications to notify you about favorites.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       }
     },
     "android": {

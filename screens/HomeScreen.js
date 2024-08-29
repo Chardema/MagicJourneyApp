@@ -8,11 +8,14 @@ import LoadingScreen from "../components/LoadingScreen";
 import { setFavorites, toggleFavorite } from "../redux/actions/actions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FavoriteCard from "../components/FavoriteCard";
+import * as Notifications from 'expo-notifications';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 
+const BACKGROUND_FETCH_TASK = 'background-fetch';
 
 const HomeScreen = () => {
     const [isLoading, setIsLoading] = useState(true);
-
     const reduxFavorites = useSelector(state => state.favorites.favorites);
     const attractions = useSelector(state => state.attractions.attractions);
 
@@ -93,6 +96,28 @@ const HomeScreen = () => {
     const handleLoadingComplete = () => {
         setIsLoading(false);
     };
+
+    // Fonction pour enregistrer pour les notifications push
+    async function registerForPushNotificationsAsync() {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+            alert('Enable notifications in settings!');
+            return;
+        }
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        console.log(token); // Sauvegarde le token pour tester
+    }
+
+    // Vérification du background fetch
+    useEffect(() => {
+        registerForPushNotificationsAsync();
+        const interval = setInterval(() => {
+            // Logique pour vérifier les mises à jour des attractions
+            console.log('Vérification des changements de temps d\'attente...');
+        }, 60000); // Vérifier toutes les 60 secondes
+
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <>
