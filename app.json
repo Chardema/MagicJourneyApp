@@ -27,6 +27,7 @@
       "eas": {
         "projectId": "8f57c079-18d1-418b-80d4-a540f2e05816"
       }
-    }
+    },
+    "plugins": ["./plugins/withDevClient"]
   }
 }
