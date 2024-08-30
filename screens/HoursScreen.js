@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, Button, Image, StyleSheet, Dimensions, ScrollView } from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {View, Text, Button, Image, StyleSheet, Dimensions, ScrollView, SafeAreaView} from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
 import useParkHours from "../components/hooks/useParkHours";
 import { formatTime, useWindowWidth } from '../components/utils';
 import { useWeather, useWeatherForecast } from "../components/hooks/weather";
-const Castle = require('../assets/Disneylandlogo.jpg');
-const Studios = require('../assets/Studioslogo.jpg');
+const Castle = require('../assets/Disneylandlogo.png');
+const Studios = require('../assets/Studioslogo.png');
+import {useNavigation} from "@react-navigation/native";
 
 const { width: screenWidth } = Dimensions.get('window');
 const HoursScreen = () => {
     const parkHours = useParkHours();
     const width = useWindowWidth();
+    const navigation = useNavigation();
     const weather = useWeather();
     const [selectedDay, setSelectedDay] = useState(new Date());
     const [showWeatherInfo, setShowWeatherInfo] = useState(false);
@@ -24,6 +25,10 @@ const HoursScreen = () => {
     const maxForecastDate = new Date();
     maxForecastDate.setDate(maxForecastDate.getDate() + 5);
     const isForecastAvailable = selectedDay < maxForecastDate;
+
+    useEffect(() => {
+        navigation.setOptions({ headerShown: false });
+    }, [navigation]);
 
     const weatherDescriptions = {
         "clear sky": "ciel clair",
@@ -99,7 +104,7 @@ const HoursScreen = () => {
     };
 
     return (
-        <View style={styles.body}>
+        <SafeAreaView style={styles.body}>
             {width > 768 && <Navbar />}
             <ScrollView contentContainerStyle={styles.container}>
                 <Button onPress={toggleWeatherInfo} title={showWeatherInfo ? 'Masquer' : 'Changer de date'} />
@@ -157,7 +162,7 @@ const HoursScreen = () => {
                 </View>
             </ScrollView>
             <BottomNav />
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -168,7 +173,6 @@ const styles = StyleSheet.create({
     },
     container: {
         padding: 20,
-        backgroundColor: '#fff',
         alignItems: 'center',
     },
     dateChangePanel: {

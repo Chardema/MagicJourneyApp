@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
-import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
 const castleImage = require('../assets/disneycastle.jpg');
 import { useWindowWidth } from '../components/utils';

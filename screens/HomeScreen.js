@@ -1,21 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { View, Text, ScrollView, Button, StyleSheet, Dimensions, Alert } from 'react-native';
-import Navbar from "../components/Navbar";
+import { View, Text,
+    ScrollView, Button, StyleSheet, Dimensions, Alert, SafeAreaView } from 'react-native';
 import BottomNav from "../components/mobileNavbar";
-import PopupSurvey from '../components/PopupSurvey';
-import LoadingScreen from "../components/LoadingScreen";
 import { setFavorites, toggleFavorite } from "../redux/actions/actions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FavoriteCard from "../components/FavoriteCard";
-import * as Notifications from 'expo-notifications';
-import * as BackgroundFetch from 'expo-background-fetch';
-import * as TaskManager from 'expo-task-manager';
-
-const BACKGROUND_FETCH_TASK = 'background-fetch';
+import
+    * as Notifications from 'expo-notifications';
+import { useNavigation } from '@react-navigation/native';
+import coutdownTimer from "../components/CoutdownTimer";
+import CountdownTimer from "../components/CoutdownTimer";
 
 const HomeScreen = () => {
-    const [isLoading, setIsLoading] = useState(true);
     const reduxFavorites = useSelector(state => state.favorites.favorites);
     const attractions = useSelector(state => state.attractions.attractions);
 
@@ -23,13 +20,19 @@ const HomeScreen = () => {
     if (!attractions || !Array.isArray(attractions)) return null;
 
     const dispatch = useDispatch();
+    const navigation = useNavigation();
     const { width } = Dimensions.get('window');
-    const [showPopup, setShowPopup] = useState(false);
     const [favoritesFilter, setFavoritesFilter] = useState('all');
     const [filteredFavorites, setFilteredFavorites] = useState(reduxFavorites);
     const [isMinimalistMode, setIsMinimalistMode] = useState(false);
+    const [countdown, setCountdown] = useState(null); // État pour le compte à rebours
+    const  [visitDate, setVisitDate] = useState(null);
 
     const toggleViewMode = () => setIsMinimalistMode(!isMinimalistMode);
+
+    useEffect(() => {
+        navigation.setOptions({ headerShown: false });
+    }, [navigation]);
 
     const updateFavorites = useCallback((favorites, attractions) => {
         return favorites.map(favorite => {
@@ -76,27 +79,6 @@ const HomeScreen = () => {
         }
     }, [favoritesFilter, reduxFavorites]);
 
-    useEffect(() => {
-        const loadPreferences = async () => {
-            try {
-                const userPreferences = await AsyncStorage.getItem('@user_preferences');
-                if (!userPreferences) {
-                    setShowPopup(true);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        loadPreferences();
-    }, []);
-
-    const closePopup = () => setShowPopup(false);
-
-    const handleLoadingComplete = () => {
-        setIsLoading(false);
-    };
-
     // Fonction pour enregistrer pour les notifications push
     async function registerForPushNotificationsAsync() {
         const { status } = await Notifications.requestPermissionsAsync();
@@ -107,6 +89,16 @@ const HomeScreen = () => {
         const token = (await Notifications.getExpoPushTokenAsync()).data;
         console.log(token); // Sauvegarde le token pour tester
     }
+
+    // Fonction pour mettre à jour hasLaunched à false
+    const setHasLaunchedToFalse = async () => {
+        try {
+            await AsyncStorage.setItem('hasLaunched', 'false');
+            console.log('La valeur de hasLaunched a été mise à jour à false');
+        } catch (error) {
+            console.error('Erreur lors de la mise à jour de hasLaunched:', error);
+        }
+    };
 
     // Vérification du background fetch
     useEffect(() => {
@@ -119,69 +111,90 @@ const HomeScreen = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Récupérer la date de visite et mettre à jour le compte à rebours
+    useEffect(() => {
+        const getVisitDate = async () => {
+            try {
+                const visitDateString = await AsyncStorage.getItem('visitDate');
+                if (visitDateString) {
+                    const visitDate = new Date(visitDateString);
+                    visitDate.setHours(8, 30, 0, 0); // Fixer l'heure à 8h30
+                    setVisitDate(visitDate);
+                }
+            } catch (error) {
+                console.error("Erreur lors de la récupération de la date de visite:", error);
+            }
+        };
+
+        getVisitDate();
+    }, []);
     return (
-        <>
-            {isLoading ? (
-                <LoadingScreen onLoadingComplete={handleLoadingComplete} />
-            ) : (
-                <View style={styles.homePage}>
-                    {width > 768 && <Navbar />}
-                    <View style={styles.content}>
-                        {filteredFavorites.length > 0 ? (
-                            <ScrollView>
-                                <View style={styles.attractionsSection}>
-                                    {filteredFavorites.map(favorite => (
-                                        <FavoriteCard
-                                            key={`${favorite._id}-${favorite.name}`}
-                                            favorite={favorite}
-                                            onRemove={removeFavorite}
-                                            onToggleFavorite={handleToggleFavorite}
-                                            isMinimalistMode={isMinimalistMode}
-                                        />
-                                    ))}
-                                </View>
-                            </ScrollView>
-                        ) : (
-                            <View style={styles.noFavoritesMessage}>
-                                <Text>Vous n'avez pas encore de favoris.</Text>
-                                <Button onPress={() => setShowPopup(true)} title="Refaire le quiz" />
-                            </View>
-                        )}
+        <SafeAreaView style={styles.homePage}>
+            {width > 768 && <Navbar />}
+            <View style={styles.content}>
+                {/* Afficher le compte à rebours s'il est disponible */}
+                {visitDate && <CountdownTimer targetDate={visitDate} />}
+
+                {filteredFavorites.length > 0 ? (
+                    <ScrollView>
+                        <View style={styles.attractionsSection}>
+                            {filteredFavorites.map(favorite => (
+                                <FavoriteCard
+                                    key={`${favorite._id}-${favorite.name}`}
+                                    favorite={favorite}
+                                    onRemove={removeFavorite}
+                                    onToggleFavorite={handleToggleFavorite}
+                                    isMinimalistMode={isMinimalistMode}
+                                />
+                            ))}
+                        </View>
+                    </ScrollView>
+                ) : (
+                    <View style={styles.noFavoritesMessage}>
+                        <Text>Vous n'avez pas encore de favoris.</Text>
                     </View>
-                    {width <= 768 && <BottomNav />}
-                    {showPopup && <PopupSurvey onClose={closePopup} attractions={attractions} />}
-                </View>
-            )}
-        </>
+                )}
+                <Button title="Reset Launch" onPress={setHasLaunchedToFalse} />
+            </View>
+            {width <= 768 && <BottomNav />}
+        </SafeAreaView>
     );
+
 };
 
 const styles = StyleSheet.create({
     homePage: {
         flex: 1,
         backgroundColor: '#f5f5f5',
-        paddingTop: 20,
     },
-    topContainer: {
-        paddingHorizontal: 15,
-    },
-    filterButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginVertical: 10,
-    },
-    bottomContainer: {
+    content: {
         flex: 1,
         paddingHorizontal: 15,
     },
     attractionsSection: {
-        marginTop: 15,
+        marginVertical: 10,
     },
     noFavoritesMessage: {
         alignItems: 'center',
         marginTop: 20,
         fontSize: 16,
         color: '#777',
+    },
+    FavoriteCard: {
+        marginVertical: 10,
+    },
+    countdownContainer: {
+        backgroundColor: '#333', // Fond sombre pour mettre en valeur le texte
+        padding: 10, // Espacement autour du texte
+        borderRadius: 10, // Bords arrondis pour un look plus moderne
+        marginBottom: 20, // Espacement en bas
+        alignItems: 'center', // Centrer le texte horizontalement
+    },
+    countdownText: {
+        fontSize: 24, // Taille de police plus grande pour le texte
+        color: '#fff', // Texte blanc pour contraster avec le fond sombre
+        fontWeight: 'bold', // Texte en gras pour le rendre plus lisible
+        letterSpacing: 1.5, // Espacement entre les lettres pour une meilleure lisibilité
     },
 });
 

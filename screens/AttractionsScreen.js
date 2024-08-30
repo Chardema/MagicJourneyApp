@@ -5,7 +5,6 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useWindowWidth } from '../components/utils';
 import { setAttractions, setRawRideData, setFilteredRideData, setSearchTerm, toggleFavorite } from "../redux/actions/actions";
-import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
 import AttractionsMap from "../components/AttractionsMap";
 import AttractionModal from '../components/ModalAttractions';
@@ -14,6 +13,7 @@ import { Switch } from 'react-native';
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { attractionImages, getFilteredRideData, getRawRideData, getFilters, getSearchTerm } from '../components/utils';
+import LoadingScreen from '../components/LoadingScreenData'; // Import du composant de chargement
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
@@ -29,7 +29,7 @@ const AttractionsScreen = () => {
     const [selectedAttraction, setSelectedAttraction] = useState(null);
     const [filtersModalVisible, setFiltersModalVisible] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [initialLoad, setInitialLoad] = useState(false); // Pour éviter le rechargement
+    const [initialLoad, setInitialLoad] = useState(false);
     const width = useWindowWidth();
     const navigation = useNavigation();
 
@@ -61,29 +61,32 @@ const AttractionsScreen = () => {
             const response = await axios.get('https://eurojourney.azurewebsites.net/api/attractions');
             const rideData = response.data;
 
-            await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
-            dispatch(setRawRideData(rideData));
-            dispatch(setAttractions(rideData));
+            // Vérifie si les données ont changé avant de les sauvegarder et de les dispatcher
+            if (JSON.stringify(rideData) !== JSON.stringify(rawRideData)) {
+                await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
+                dispatch(setRawRideData(rideData));
+                dispatch(setAttractions(rideData));
 
-            const newPreviousWaitTimes = {};
-            rideData.forEach(ride => {
-                const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
-                newPreviousWaitTimes[ride._id] = {
-                    currentWaitTime: ride.waitTime,
-                    previousWaitTime: prevWaitTime || null,
-                    hadPreviousWaitTime: !!prevWaitTime
-                };
-            });
+                const newPreviousWaitTimes = {};
+                rideData.forEach(ride => {
+                    const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
+                    newPreviousWaitTimes[ride._id] = {
+                        currentWaitTime: ride.waitTime,
+                        previousWaitTime: prevWaitTime || null,
+                        hadPreviousWaitTime: !!prevWaitTime
+                    };
+                });
 
-            setPreviousWaitTimes(newPreviousWaitTimes);
-            await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
+                setPreviousWaitTimes(newPreviousWaitTimes);
+                await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
+            }
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
         } finally {
             setLoading(false);
             setInitialLoad(true);  // Indiquer que le chargement initial est terminé
         }
-    }, [dispatch, previousWaitTimes]);
+    }, [dispatch, previousWaitTimes, rawRideData]);
 
     // Fetch des données lors du premier montage et toutes les minutes
     useEffect(() => {
@@ -97,10 +100,13 @@ const AttractionsScreen = () => {
         return () => clearInterval(intervalId); // Nettoie l'intervalle lors du démontage du composant
     }, [fetchData, initialLoad]);
 
-    // Met à jour les données filtrées
+    // Met à jour les données filtrées uniquement si les données source ont changé
     useEffect(() => {
         if (rawRideData && initialLoad) {
-            dispatch(setFilteredRideData(filteredRideData));
+            const newFilteredData = filteredRideData; // Ajoute ici la logique de filtrage si nécessaire
+            if (JSON.stringify(newFilteredData) !== JSON.stringify(filteredRideData)) {
+                dispatch(setFilteredRideData(newFilteredData));
+            }
         }
     }, [rawRideData, searchTerm, filters, dispatch, filteredRideData, initialLoad]);
 
@@ -119,12 +125,10 @@ const AttractionsScreen = () => {
         try {
             console.log("Toggling favorite for:", attractionId);
             dispatch(toggleFavorite(attractionId));
-            // Désactiver le bouton ici pour empêcher des clics multiples rapides
         } catch (error) {
             console.error("Erreur lors de l'ajout aux favoris:", error);
         }
     };
-
 
     // Ouverture du modal avec les détails de l'attraction
     const openModalWithAttraction = (attraction) => {
@@ -151,12 +155,9 @@ const AttractionsScreen = () => {
 
     const allRidesClosed = rawRideData?.length > 0 && rawRideData.every(ride => ride.status === 'CLOSED');
 
+    // Affichage de l'écran de chargement si les données sont en cours de chargement
     if (loading) {
-        return (
-            <View style={styles.loadingContainer}>
-                <Text>Chargement des attractions...</Text>
-            </View>
-        );
+        return <LoadingScreen />;
     }
 
     return (

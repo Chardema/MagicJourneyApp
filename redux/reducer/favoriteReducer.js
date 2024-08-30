@@ -11,10 +11,14 @@ const favoritesReducer = (state = initialState, action) => {
     console.log('Action Received:', action);
     switch (action.type) {
         case SET_ATTRACTIONS:
-            return {
-                ...state,
-                attractions: action.payload,
-            };
+            if (JSON.stringify(state.attractions) !== JSON.stringify(action.payload)) {
+                return {
+                    ...state,
+                    attractions: action.payload,
+                };
+            }
+            return state;
+
         case TOGGLE_FAVORITE:
             const attractionId = action.payload;
             const isAlreadyFavorite = state.favorites.some(fav => fav._id === attractionId);
@@ -31,7 +35,7 @@ const favoritesReducer = (state = initialState, action) => {
                 }
                 return {
                     ...state,
-                    favorites: [...new Set([...state.favorites, newFavorite])], // Utilisation de Set pour éviter les doublons
+                    favorites: [...state.favorites, newFavorite],
                 };
             }
 
@@ -49,11 +53,16 @@ const favoritesReducer = (state = initialState, action) => {
                     favorites: [...state.favorites, { _id: showId }],
                 };
             }
+
         case SET_FAVORITES:
-            return {
-                ...state,
-                favorites: action.payload,
-            };
+            if (JSON.stringify(state.favorites) !== JSON.stringify(action.payload)) {
+                return {
+                    ...state,
+                    favorites: action.payload,
+                };
+            }
+            return state;
+
         default:
             return state;
     }

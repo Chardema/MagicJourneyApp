@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import MapView, { Marker, Callout } from 'react-native-maps';
 import { FontAwesome } from '@expo/vector-icons';
 import { toggleFavoriteShow} from "../redux/actions/actions";
-import Navbar from "../components/Navbar";
 import BottomNav from "../components/mobileNavbar";
 import { formatImageName, importImage, useWindowWidth, fetchFullShowInfo } from "../components/utils";
 
