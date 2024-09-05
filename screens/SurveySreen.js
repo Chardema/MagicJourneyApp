@@ -4,6 +4,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics'; // Importer expo-haptics
 
 const VisitSurveyPage = () => {
     const [currentStep, setCurrentStep] = useState(0);
@@ -13,6 +14,9 @@ const VisitSurveyPage = () => {
     const navigation = useNavigation();
 
     const handleAnswer = useCallback((answer, type) => {
+        // Déclencher un retour haptique lors du clic sur les boutons de réponse
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
         if (type === 'visitDate') {
             setShowDatePicker(true);
         } else {
@@ -40,6 +44,9 @@ const VisitSurveyPage = () => {
     };
 
     const handleConfirm = () => {
+        // Déclencher un retour haptique lors de la confirmation
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
         setResponses(current => {
             const fixedDate = new Date(date);
             fixedDate.setHours(8);
@@ -107,7 +114,10 @@ const VisitSurveyPage = () => {
                         <Text style={styles.question}>Quand prévoyez-vous de venir ?</Text>
                         <TouchableOpacity
                             style={styles.datePickerButton}
-                            onPress={() => setShowDatePicker(true)}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); // Retour haptique pour le bouton date
+                                setShowDatePicker(true);
+                            }}
                         >
                             <FontAwesome name="calendar" size={20} color="#FFF" />
                             <Text style={styles.datePickerButtonText}>Choisir une date</Text>
@@ -156,6 +166,7 @@ const VisitSurveyPage = () => {
 };
 
 const styles = StyleSheet.create({
+    // Styles existants
     pageContainer: {
         flex: 1,
         backgroundColor: '#F5F5F5',
