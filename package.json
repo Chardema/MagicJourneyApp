@@ -23,6 +23,7 @@
     "expo-constants": "~16.0.2",
     "expo-dev-client": "~4.0.25",
     "expo-device": "~6.0.2",
+    "expo-haptics": "~13.0.1",
     "expo-location": "^17.0.1",
     "expo-notifications": "~0.28.16",
     "expo-status-bar": "~1.12.1",
@@ -42,8 +43,7 @@
     "react-native-vector-icons": "^10.1.0",
     "react-redux": "^9.1.2",
     "redux": "^5.0.1",
-    "reselect": "^5.1.1",
-    "expo-haptics": "~13.0.1"
+    "reselect": "^5.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

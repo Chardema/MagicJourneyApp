@@ -1,172 +1,181 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Modal } from 'react-native';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Animated } from 'react-native';
+import NeverVisitedSurvey from '../components/NeverVisitedSurvey';
+import AlreadyVisitedSurvey from '../components/AlreadyVisitedSurvey';
 import { useNavigation } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics'; // Importer expo-haptics
+import Icon from "react-native-vector-icons/FontAwesome";
 
 const VisitSurveyPage = () => {
-    const [currentStep, setCurrentStep] = useState(0);
-    const [responses, setResponses] = useState({});
-    const [date, setDate] = useState(null);  // Initialiser avec null pour ne rien afficher par défaut
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [currentStep, setCurrentStep] = useState(0); // Gérer les étapes
+    const [responses, setResponses] = useState({}); // Stocker les réponses
+    const [name, setName] = useState(''); // Stocker le prénom de l'utilisateur
     const navigation = useNavigation();
 
-    const handleAnswer = useCallback((answer, type) => {
-        // Déclencher un retour haptique lors du clic sur les boutons de réponse
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Animations pour les encadrés
+    const fadeAnim1 = useRef(new Animated.Value(0)).current;
+    const fadeAnim2 = useRef(new Animated.Value(0)).current;
+    const fadeAnim3 = useRef(new Animated.Value(0)).current;
+    const fadeAnim4 = useRef(new Animated.Value(0)).current; // Pour l'encadré de l'IA
 
-        if (type === 'visitDate') {
-            setShowDatePicker(true);
-        } else {
-            setResponses(current => {
-                const updatedResponses = { ...current, [type]: answer };
+    useEffect(() => {
+        // Démarrer les animations de façon séquentielle
+        Animated.sequence([
+            Animated.timing(fadeAnim1, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim2, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim3, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim4, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [fadeAnim1, fadeAnim2, fadeAnim3, fadeAnim4]);
 
-                if (type === 'planningToVisit' && answer === 'Non') {
-                    AsyncStorage.setItem('userPreferences', JSON.stringify(updatedResponses)).then(() => {
-                        navigation.navigate('MainTabs', { screen: 'HomeScreen' });
-                    });
-                } else {
-                    setCurrentStep(prev => prev + 1);
-                }
-
-                return updatedResponses;
-            });
-        }
-    }, [navigation]);
-
-    const handleDateChange = (event, selectedDate) => {
-        setShowDatePicker(false);
-        if (selectedDate) {
-            setDate(selectedDate);
-        }
+    // Gestion de la réponse à la question principale
+    const handleFirstAnswer = (answer) => {
+        setResponses((prev) => ({ ...prev, visitedDisney: answer }));
+        setCurrentStep(3); // Passe à l'étape suivante (le questionnaire spécifique)
     };
 
-    const handleConfirm = () => {
-        // Déclencher un retour haptique lors de la confirmation
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-        setResponses(current => {
-            const fixedDate = new Date(date);
-            fixedDate.setHours(8);
-            fixedDate.setMinutes(30);
-            fixedDate.setSeconds(0);
-            fixedDate.setMilliseconds(0);
-
-            const updatedResponses = { ...current, visitDate: fixedDate.toISOString() };
-            AsyncStorage.setItem('userPreferences', JSON.stringify(updatedResponses)).then(() => {
-                navigation.navigate('MainTabs', { screen: 'HomeScreen' });
-            });
-            AsyncStorage.setItem('visitDate', fixedDate.toISOString());
-            return updatedResponses;
-        });
-    };
-
-    const getProgress = () => {
-        const steps = 3;  // Total number of steps
-        return (currentStep + 1) / steps * 100;
+    const handleNameSubmit = () => {
+        if (name.trim()) {
+            setResponses((prev) => ({ ...prev, name })); // Sauvegarde du prénom
+            setCurrentStep(2); // Passer à la question "Avez-vous déjà visité Disneyland Paris ?"
+        }
     };
 
     return (
         <View style={styles.pageContainer}>
             <Image source={require('../assets/viewingarea.jpg')} style={styles.headerImage} />
-
             <View style={styles.contentContainer}>
+                {/* Étape 0: Bienvenue avec des explications */}
                 {currentStep === 0 && (
                     <>
-                        <Text style={styles.question}>Avez-vous déjà visité Disneyland Paris ?</Text>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Oui', 'visitedDisney')}
-                            style={styles.answerButton}
-                        >
+                        <Text style={styles.title}>Bienvenue sur Magic Journey</Text>
+                        <Text style={styles.description}>
+                            Magic Journey vous accompagne pour une visite optimale à Disneyland Paris.
+                            Découvrez ci-dessous ce que notre application peut faire pour vous :
+                        </Text>
+
+                        {/* Encadré 1 avec animation */}
+                        <Animated.View style={[styles.featureContainer, { opacity: fadeAnim1 }]}>
+                            <Icon name="clock-o" size={30} color="#FF6F61" style={styles.icon} />
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Temps d'attente en direct</Text>
+                                <Text style={styles.featureDescription}>
+                                    Consultez les temps d'attente en temps réel pour toutes les attractions.
+                                </Text>
+                            </View>
+                        </Animated.View>
+
+                        {/* Encadré 2 avec animation */}
+                        <Animated.View style={[styles.featureContainer, { opacity: fadeAnim2 }]}>
+                            <Icon name="map-o" size={30} color="#FF6F61" style={styles.icon} />
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Navigation interactive</Text>
+                                <Text style={styles.featureDescription}>
+                                    Naviguez facilement à travers le parc avec notre carte interactive.
+                                </Text>
+                            </View>
+                        </Animated.View>
+
+                        {/* Encadré 3 avec animation */}
+                        <Animated.View style={[styles.featureContainer, { opacity: fadeAnim3 }]}>
+                            <Icon name="lightbulb-o" size={30} color="#FF6F61" style={styles.icon} />
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Astuces et secrets</Text>
+                                <Text style={styles.featureDescription}>
+                                    Découvrez des secrets cachés et des astuces pour maximiser votre visite.
+                                </Text>
+                            </View>
+                        </Animated.View>
+
+                        {/* Encadré pour l'intelligence artificielle */}
+                        <Animated.View style={[styles.featureContainer, { opacity: fadeAnim4 }]}>
+                            <Icon name="star" size={30} color="#FF6F61" style={styles.icon} />
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Intelligence Artificielle (Bientôt)</Text>
+                                <Text style={styles.featureDescription}>
+                                    Laissez notre IA planifier et optimiser votre journée en temps réel.
+                                </Text>
+                            </View>
+                        </Animated.View>
+
+                        <TouchableOpacity onPress={() => setCurrentStep(1)} style={styles.answerButton}>
+                            <Text style={styles.buttonText}>Commencer</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {/* Étape 1: Demande du prénom */}
+                {currentStep === 1 && (
+                    <>
+                        <Text style={styles.title}>Commençons par personnaliser ton application</Text>
+                        <Text style={styles.question}>Quel est ton prénom ?</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Entrez votre prénom"
+                            value={name}
+                            onChangeText={(text) => setName(text)}
+                        />
+                        <TouchableOpacity onPress={handleNameSubmit} style={styles.answerButton}>
+                            <Text style={styles.buttonText}>Confirmer</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {/* Étape 2: Avez-vous déjà visité Disneyland Paris ? */}
+                {currentStep === 2 && (
+                    <>
+                        <Text style={styles.question}>
+                            Bienvenue sur MagicJourney {name ? `${name}, as-tu déjà visité Disneyland Paris ?` : "As-tu déjà visité Disneyland Paris ?"}
+                        </Text>
+
+                        <TouchableOpacity onPress={() => handleFirstAnswer('Oui')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Oui</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Non', 'visitedDisney')}
-                            style={styles.answerButton}
-                        >
+                        <TouchableOpacity onPress={() => handleFirstAnswer('Non')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Non</Text>
                         </TouchableOpacity>
                     </>
                 )}
 
-                {currentStep === 1 && responses.visitedDisney === 'Non' && (
-                    <>
-                        <Text style={styles.question}>Prévoyez-vous de venir sur le parc bientôt ?</Text>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Oui', 'planningToVisit')}
-                            style={styles.answerButton}
-                        >
-                            <Text style={styles.buttonText}>Oui</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Non', 'planningToVisit')}
-                            style={styles.answerButton}
-                        >
-                            <Text style={styles.buttonText}>Non</Text>
-                        </TouchableOpacity>
-                    </>
+                {/* Étape 3: Redirection vers le bon questionnaire */}
+                {currentStep === 3 && responses.visitedDisney === 'Oui' && (
+                    <AlreadyVisitedSurvey
+                        setCurrentStep={setCurrentStep}
+                        responses={responses}
+                        setResponses={setResponses}
+                        styles={styles}
+                    />
                 )}
 
-                {currentStep === 2 && responses.planningToVisit === 'Oui' && (
-                    <>
-                        <Text style={styles.question}>Quand prévoyez-vous de venir ?</Text>
-                        <TouchableOpacity
-                            style={styles.datePickerButton}
-                            onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); // Retour haptique pour le bouton date
-                                setShowDatePicker(true);
-                            }}
-                        >
-                            <FontAwesome name="calendar" size={20} color="#FFF" />
-                            <Text style={styles.datePickerButtonText}>Choisir une date</Text>
-                        </TouchableOpacity>
-
-                        {date && (
-                            <Text style={styles.selectedDateText}>
-                                {date.toLocaleDateString()}
-                            </Text>
-                        )}
-
-                        <TouchableOpacity onPress={handleConfirm} style={styles.confirmButton}>
-                            <Text style={styles.confirmButtonText}>Confirmer</Text>
-                        </TouchableOpacity>
-                    </>
+                {currentStep === 3 && responses.visitedDisney === 'Non' && (
+                    <NeverVisitedSurvey
+                        setCurrentStep={setCurrentStep}
+                        responses={responses} // Passer les réponses incluant le prénom
+                        setResponses={setResponses}
+                        styles={styles}
+                    />
                 )}
-
-                {/* Modal for Date Picker */}
-                <Modal
-                    transparent={true}
-                    visible={showDatePicker}
-                    onRequestClose={() => setShowDatePicker(false)}
-                >
-                    <View style={styles.modalContainer}>
-                        <View style={styles.datePickerContainer}>
-                            <DateTimePicker
-                                value={date || new Date()}
-                                mode="date"
-                                display="default"
-                                onChange={handleDateChange}
-                            />
-                            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.modalCloseButton}>
-                                <Text style={styles.modalCloseButtonText}>Fermer</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
-
-                {/* Progress Bar */}
-                <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBar, { width: `${getProgress()}%` }]} />
-                </View>
             </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    // Styles existants
     pageContainer: {
         flex: 1,
         backgroundColor: '#F5F5F5',
@@ -183,6 +192,43 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         padding: 20,
         marginTop: -20,
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+        color: '#333',
+    },
+    description: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    featureContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#F0F0F0',
+        borderRadius: 10,
+        padding: 15,
+        marginVertical: 10,
+        alignItems: 'center',
+    },
+    icon: {
+        marginRight: 15,
+    },
+    featureTextContainer: {
+        flex: 1,
+    },
+    featureTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    featureDescription: {
+        fontSize: 14,
+        color: '#666',
+        marginTop: 5,
     },
     question: {
         fontSize: 20,
@@ -203,69 +249,13 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
     },
-    datePickerButton: {
-        backgroundColor: '#4A90E2',
-        padding: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
         borderRadius: 10,
-        marginVertical: 10,
-    },
-    datePickerButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        marginLeft: 10,
-    },
-    selectedDateText: {
-        textAlign: 'center',
-        fontSize: 16,
-        color: '#333',
-        marginTop: 10,
-    },
-    confirmButton: {
-        backgroundColor: '#28a745',
-        padding: 15,
-        borderRadius: 10,
-        marginTop: 20,
-        alignItems: 'center',
-    },
-    confirmButtonText: {
-        color: '#fff',
-        fontSize: 16,
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    datePickerContainer: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    modalCloseButton: {
-        marginTop: 20,
         padding: 10,
-        backgroundColor: '#FF6F61',
-        borderRadius: 5,
-    },
-    modalCloseButtonText: {
-        color: '#fff',
+        marginBottom: 20,
         fontSize: 16,
-    },
-    progressBarContainer: {
-        height: 10,
-        backgroundColor: '#ddd',
-        borderRadius: 5,
-        marginTop: 30,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#FF6F61',
     },
 });
 
