@@ -1,25 +1,49 @@
+// AttractionsScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, Text, Image, TextInput, Button, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
+import {
+    View,
+    Text,
+    Image,
+    TextInput,
+    Button,
+    TouchableOpacity,
+    StyleSheet,
+    ScrollView,
+    Modal,
+    Alert,
+} from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useWindowWidth } from '../components/utils';
-import { setAttractions, setRawRideData, setFilteredRideData, setSearchTerm, toggleFavorite } from "../redux/actions/actions";
-import BottomNav from "../components/mobileNavbar";
-import AttractionsMap from "../components/AttractionsMap";
+import {
+    setAttractions,
+    setRawRideData,
+    setFilteredRideData,
+    setSearchTerm,
+    toggleFavorite,
+} from '../redux/actions/actions';
+import BottomNav from '../components/mobileNavbar';
+import AttractionsMap from '../components/AttractionsMap';
 import AttractionModal from '../components/ModalAttractions';
 import { Picker } from '@react-native-picker/picker';
 import { Switch } from 'react-native';
-import { useNavigation } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { attractionImages, getFilteredRideData, getRawRideData, getFilters, getSearchTerm } from '../components/utils';
-import LoadingScreen from '../components/LoadingScreenData'; // Import du composant de chargement
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+    attractionImages,
+    getFilteredRideData,
+    getRawRideData,
+    getFilters,
+    getSearchTerm,
+} from '../components/utils';
+import LoadingScreen from '../components/LoadingScreenData';
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
     const rawRideData = useSelector(getRawRideData);
     const searchTerm = useSelector(getSearchTerm);
-    const favorites = useSelector(state => state.favorites.favorites);
+    const favorites = useSelector((state) => state.favorites.favorites);
     const filters = useSelector(getFilters);
     const filteredRideData = useSelector(getFilteredRideData);
     const [viewMode, setViewMode] = useState('list');
@@ -38,10 +62,46 @@ const AttractionsScreen = () => {
         navigation.setOptions({ headerShown: false });
     }, [navigation]);
 
+    // Fonction pour appliquer les filtres
+    const applyFilters = useCallback(
+        (data) => {
+            let filteredData = [...data];
+
+            // Filtre par land
+            if (filters.selectedLand !== 'all') {
+                filteredData = filteredData.filter((ride) => ride.land === filters.selectedLand);
+            }
+
+            // Filtre par type
+            if (filters.selectedType !== 'all') {
+                filteredData = filteredData.filter((ride) => ride.type === filters.selectedType);
+            }
+
+            // Filtre par temps d'attente
+            if (filters.showShortWaitTimesOnly) {
+                filteredData = filteredData.filter((ride) => ride.waitTime && ride.waitTime < 40);
+            }
+
+            // Masquer les attractions fermées
+            if (filters.hideClosedRides) {
+                filteredData = filteredData.filter((ride) => ride.status !== 'CLOSED');
+            }
+
+            // Filtre par terme de recherche
+            if (searchTerm) {
+                filteredData = filteredData.filter((ride) =>
+                    ride.name.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+            }
+
+            return filteredData;
+        },
+        [filters, searchTerm]
+    );
+
     // Fonction pour récupérer les données
     const fetchData = useCallback(async () => {
         try {
-            setLoading(true);
             const cachedData = await AsyncStorage.getItem('attractionsData');
             const cachedWaitTimes = await AsyncStorage.getItem('waitTimes');
             let parsedData = [];
@@ -68,12 +128,12 @@ const AttractionsScreen = () => {
                 dispatch(setAttractions(rideData));
 
                 const newPreviousWaitTimes = {};
-                rideData.forEach(ride => {
+                rideData.forEach((ride) => {
                     const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
                     newPreviousWaitTimes[ride._id] = {
                         currentWaitTime: ride.waitTime,
                         previousWaitTime: prevWaitTime || null,
-                        hadPreviousWaitTime: !!prevWaitTime
+                        hadPreviousWaitTime: !!prevWaitTime,
                     };
                 });
 
@@ -83,8 +143,7 @@ const AttractionsScreen = () => {
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
         } finally {
-            setLoading(false);
-            setInitialLoad(true);  // Indiquer que le chargement initial est terminé
+            setInitialLoad(true); // Indiquer que le chargement initial est terminé
         }
     }, [dispatch, previousWaitTimes, rawRideData]);
 
@@ -103,12 +162,17 @@ const AttractionsScreen = () => {
     // Met à jour les données filtrées uniquement si les données source ont changé
     useEffect(() => {
         if (rawRideData && initialLoad) {
-            const newFilteredData = filteredRideData; // Ajoute ici la logique de filtrage si nécessaire
-            if (JSON.stringify(newFilteredData) !== JSON.stringify(filteredRideData)) {
-                dispatch(setFilteredRideData(newFilteredData));
-            }
+            const newFilteredData = applyFilters(rawRideData);
+            dispatch(setFilteredRideData(newFilteredData));
         }
-    }, [rawRideData, searchTerm, filters, dispatch, filteredRideData, initialLoad]);
+    }, [rawRideData, applyFilters, dispatch, initialLoad]);
+
+    // Vérifier que les données sont prêtes et arrêter le chargement
+    useEffect(() => {
+        if (rawRideData && filteredRideData && initialLoad) {
+            setLoading(false);
+        }
+    }, [rawRideData, filteredRideData, initialLoad]);
 
     // Gestion du changement de filtre
     const handleFilterChange = (filter, value) => {
@@ -123,10 +187,10 @@ const AttractionsScreen = () => {
     // Gestion des favoris
     const handleToggleFavorite = async (attractionId) => {
         try {
-            console.log("Toggling favorite for:", attractionId);
+            if (!attractionId) return;
             dispatch(toggleFavorite(attractionId));
         } catch (error) {
-            console.error("Erreur lors de l'ajout aux favoris:", error);
+            console.error('Erreur lors de l\'ajout aux favoris:', error);
         }
     };
 
@@ -153,10 +217,8 @@ const AttractionsScreen = () => {
         return null;
     };
 
-    const allRidesClosed = rawRideData?.length > 0 && rawRideData.every(ride => ride.status === 'CLOSED');
-
     // Affichage de l'écran de chargement si les données sont en cours de chargement
-    if (loading) {
+    if (loading || !rawRideData || !filteredRideData) {
         return <LoadingScreen />;
     }
 
@@ -164,8 +226,18 @@ const AttractionsScreen = () => {
         <View style={styles.bodyAttraction}>
             {width > 768 && <Navbar />}
             <View style={styles.header}>
-                <Button title="Liste" onPress={() => setViewMode('list')} color={viewMode === 'list' ? '#007BFF' : '#ddd'} />
-                <Button title="Itinéraire" onPress={() => setViewMode('map')} color={viewMode === 'map' ? '#007BFF' : '#ddd'} />
+                <Button
+                    title="Liste"
+                    onPress={() => setViewMode('list')}
+                    color={viewMode === 'list' ? '#007BFF' : '#ddd'}
+                    disabled={loading}
+                />
+                <Button
+                    title="Itinéraire"
+                    onPress={() => setViewMode('map')}
+                    color={viewMode === 'map' ? '#007BFF' : '#ddd'}
+                    disabled={loading}
+                />
             </View>
             {viewMode === 'list' ? (
                 <ScrollView style={styles.container}>
@@ -174,19 +246,22 @@ const AttractionsScreen = () => {
                         style={styles.searchAttraction}
                         value={searchTerm}
                         onChangeText={handleSearchChange}
+                        editable={!loading}
                     />
-                    <Button title="Filtrer" onPress={() => setFiltersModalVisible(true)} />
-                    {allRidesClosed ? (
-                        <Text style={styles.noRidesMessage}>Toutes les attractions sont actuellement fermées, à demain !</Text>
-                    ) : (
-                        <View style={styles.attractionsList}>
-                            {filteredRideData.length > 0 ? filteredRideData.map((ride) => {
+                    <Button
+                        title="Filtrer"
+                        onPress={() => setFiltersModalVisible(true)}
+                        disabled={loading}
+                    />
+                    <View style={styles.attractionsList}>
+                        {filteredRideData && filteredRideData.length > 0 ? (
+                            filteredRideData.map((ride) => {
                                 if (!ride || !ride._id) {
-                                    console.error("Invalid ride data:", ride);
+                                    console.error('Invalid ride data:', ride);
                                     return null;
                                 }
 
-                                const isFavorite = favorites.some(fav => fav._id === ride._id);
+                                const isFavorite = favorites.some((fav) => fav._id === ride._id);
                                 const previousWaitTime = previousWaitTimes[ride._id]?.previousWaitTime;
                                 const currentWaitTime = ride.waitTime;
                                 const changeTimestamp = changeTimestamps[ride._id];
@@ -194,14 +269,17 @@ const AttractionsScreen = () => {
                                 return (
                                     <View key={ride._id} style={styles.card}>
                                         <View style={styles.imageWrapper}>
-                                            <Image source={attractionImages[ride.name]} style={styles.imgAttraction} />
+                                            <Image
+                                                source={attractionImages[ride.name]}
+                                                style={styles.imgAttraction}
+                                            />
                                             <TouchableOpacity
                                                 style={styles.favoriteIconWrapper}
                                                 onPress={() => handleToggleFavorite(ride._id)}
                                             >
                                                 <Icon
                                                     name="heart"
-                                                    size={50}
+                                                    size={30}
                                                     color={isFavorite ? 'red' : 'white'}
                                                     style={{ opacity: isFavorite ? 1 : 0.5 }}
                                                 />
@@ -210,31 +288,46 @@ const AttractionsScreen = () => {
                                         <View style={styles.cardText}>
                                             <Text style={styles.attractionName}>{ride.name}</Text>
                                             <Text style={styles.attractionLand}>{ride.land}</Text>
-                                            {getArrowIcon(currentWaitTime, previousWaitTime, changeTimestamp) &&
+                                            {getArrowIcon(currentWaitTime, previousWaitTime, changeTimestamp) && (
                                                 <View style={styles.arrowWrapper}>
                                                     {getArrowIcon(currentWaitTime, previousWaitTime, changeTimestamp)}
                                                 </View>
-                                            }
-                                            <Button title="Détails" onPress={() => openModalWithAttraction(ride)} />
+                                            )}
+                                            <Button
+                                                title="Détails"
+                                                onPress={() => openModalWithAttraction(ride)}
+                                            />
                                         </View>
-                                        <View style={[styles.waitTime, isFavorite ? styles.waitTimeFavorite : null]}>
+                                        <View
+                                            style={[
+                                                styles.waitTime,
+                                                isFavorite ? styles.waitTimeFavorite : null,
+                                            ]}
+                                        >
                                             <Text>
-                                                {ride.status === 'DOWN' ? 'Indispo' :
-                                                    ride.status === 'CLOSED' ? 'Fermée' :
-                                                        ride.waitTime === null ? 'Sans file' : `${ride.waitTime} min`}
+                                                {ride.status === 'DOWN'
+                                                    ? 'Indispo'
+                                                    : ride.status === 'CLOSED'
+                                                        ? 'Fermée'
+                                                        : ride.waitTime === null
+                                                            ? 'Sans file'
+                                                            : `${ride.waitTime} min`}
                                             </Text>
                                         </View>
                                     </View>
                                 );
-                            }) : (
-                                <Text>Aucune attraction correspondant à la recherche.</Text>
-                            )}
-                        </View>
-                    )}
+                            })
+                        ) : (
+                            <Text>Aucune attraction correspondant à la recherche.</Text>
+                        )}
+                    </View>
                 </ScrollView>
             ) : (
-                <View style={{ height: '80vh', width: '100vw' }}>
-                    <AttractionsMap attractions={filteredRideData} getWaitTimeColor={(waitTime) => <Text>{waitTime} min</Text>} />
+                <View style={{ flex: 1 }}>
+                    <AttractionsMap
+                        attractions={filteredRideData || []}
+                        getWaitTimeColor={(waitTime) => <Text>{waitTime} min</Text>}
+                    />
                 </View>
             )}
             <Modal
@@ -275,7 +368,10 @@ const AttractionsScreen = () => {
                                 <Picker.Item label="Famille" value="Famille" />
                                 <Picker.Item label="Sensation" value="Sensation" />
                                 <Picker.Item label="Sans file d’attente" value="Sans file d’attente" />
-                                <Picker.Item label="Rencontre avec les personnages" value="Rencontre avec les personnages" />
+                                <Picker.Item
+                                    label="Rencontre avec les personnages"
+                                    value="Rencontre avec les personnages"
+                                />
                             </Picker>
                         </View>
                         <View style={styles.checkbox}>
@@ -375,11 +471,6 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 10,
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
         width: '48%',
         minWidth: '48%',
         maxWidth: '48%',
@@ -395,11 +486,8 @@ const styles = StyleSheet.create({
     },
     favoriteIconWrapper: {
         position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: [{ translateX: -25 }, { translateY: -25 }],
-        borderRadius: 25,
-        padding: 10,
+        top: 10,
+        right: 10,
     },
     cardText: {
         alignItems: 'center',
@@ -419,7 +507,7 @@ const styles = StyleSheet.create({
     waitTime: {
         position: 'absolute',
         top: 10,
-        right: 10,
+        left: 10,
         backgroundColor: '#E0E0E0',
         borderRadius: 15,
         padding: 5,
@@ -430,6 +518,9 @@ const styles = StyleSheet.create({
     },
     waitTimeFavorite: {
         backgroundColor: '#FFD700',
+    },
+    arrowWrapper: {
+        marginTop: 5,
     },
     modalOverlay: {
         flex: 1,

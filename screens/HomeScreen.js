@@ -1,15 +1,24 @@
+// HomeScreen.js
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from "react-redux";
-import { View, Text,
-    ScrollView, Button, StyleSheet, Dimensions, Alert, SafeAreaView } from 'react-native';
+import {
+    View,
+    Text,
+    ScrollView,
+    Button,
+    StyleSheet,
+    Dimensions,
+    Alert,
+    SafeAreaView,
+    Image,
+} from 'react-native';
 import BottomNav from "../components/mobileNavbar";
 import { setFavorites, toggleFavorite } from "../redux/actions/actions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FavoriteCard from "../components/FavoriteCard";
-import
-    * as Notifications from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
-import coutdownTimer from "../components/CoutdownTimer";
 import CountdownTimer from "../components/CoutdownTimer";
 
 const HomeScreen = () => {
@@ -25,8 +34,11 @@ const HomeScreen = () => {
     const [favoritesFilter, setFavoritesFilter] = useState('all');
     const [filteredFavorites, setFilteredFavorites] = useState(reduxFavorites);
     const [isMinimalistMode, setIsMinimalistMode] = useState(false);
-    const [countdown, setCountdown] = useState(null); // État pour le compte à rebours
-    const  [visitDate, setVisitDate] = useState(null);
+    const [visitDate, setVisitDate] = useState(null);
+    const [userResponses, setUserResponses] = useState({}); // Ajouter cet état
+    const [characterMeetTimes, setCharacterMeetTimes] = useState(null);
+
+    const isReturningVisitor = userResponses?.visitedDisney === 'Oui';
 
     const toggleViewMode = () => setIsMinimalistMode(!isMinimalistMode);
 
@@ -79,11 +91,40 @@ const HomeScreen = () => {
         }
     }, [favoritesFilter, reduxFavorites]);
 
+    // Charger les réponses du questionnaire et la date de visite
+    useEffect(() => {
+        const loadUserData = async () => {
+            try {
+                const storedResponses = await AsyncStorage.getItem('userResponses');
+                if (storedResponses) {
+                    const parsedResponses = JSON.parse(storedResponses);
+                    setUserResponses(parsedResponses);
+
+                    // Charger la date de visite si elle existe
+                    if (parsedResponses.visitDate) {
+                        const date = new Date(parsedResponses.visitDate);
+                        date.setHours(8, 30, 0, 0);
+                        setVisitDate(date);
+                    }
+
+                    // Charger les horaires de rencontre des personnages si nécessaire
+                    if (parsedResponses.parkStyle === 'Rencontre personnage') {
+                        // Exemple d'horaires de rencontre des personnages
+                        setCharacterMeetTimes(['10:00', '12:00', '14:00', '16:00']);
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur lors du chargement des données utilisateur:", error);
+            }
+        };
+        loadUserData();
+    }, []);
+
     // Fonction pour enregistrer pour les notifications push
     async function registerForPushNotificationsAsync() {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') {
-            alert('Enable notifications in settings!');
+            alert('Activez les notifications dans les paramètres !');
             return;
         }
         const token = (await Notifications.getExpoPushTokenAsync()).data;
@@ -111,30 +152,99 @@ const HomeScreen = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Récupérer la date de visite et mettre à jour le compte à rebours
-    useEffect(() => {
-        const getVisitDate = async () => {
-            try {
-                const visitDateString = await AsyncStorage.getItem('visitDate');
-                if (visitDateString) {
-                    const visitDate = new Date(visitDateString);
-                    visitDate.setHours(8, 30, 0, 0); // Fixer l'heure à 8h30
-                    setVisitDate(visitDate);
-                }
-            } catch (error) {
-                console.error("Erreur lors de la récupération de la date de visite:", error);
-            }
-        };
+    // Fonctions pour afficher des sections spécifiques
+    const renderVisitCount = () => {
+        if (userResponses.visitCount) {
+            return (
+                <View>
+                    <Text style={styles.question}>
+                        Vous êtes venu {userResponses.visitCount} fois au parc !
+                    </Text>
+                </View>
+            );
+        }
+        return null;
+    };
 
-        getVisitDate();
-    }, []);
+    const renderAnnualPassInfo = () => {
+        if (userResponses.annualPass && userResponses.annualPass !== 'Non') {
+            let passImage;
+            let advantages;
+
+            switch (userResponses.annualPass) {
+                case 'Magic Flex':
+                    passImage = require('../assets/bronze.jpg');
+                    advantages = 'Accès 300 jours/an, réduction sur les boutiques et restaurants.';
+                    break;
+                case 'Magic Plus':
+                    passImage = require('../assets/argent.jpg');
+                    advantages = 'Accès 350 jours/an, réductions et parking gratuit.';
+                    break;
+                case 'Infinity':
+                    passImage = require('../assets/gold.jpg');
+                    advantages = 'Accès 365 jours/an, réservations privilèges, réductions premium.';
+                    break;
+            }
+
+            return (
+                <View style={styles.passContainer}>
+                    <Image source={passImage} style={styles.passImage} />
+                    <Text style={styles.passText}>{advantages}</Text>
+                    <Text style={styles.passText}>Prochaine soirée pass annuel : 15 octobre 2024</Text>
+                </View>
+            );
+        }
+        return null;
+    };
+
+    const renderCharacterMeetTimes = () => {
+        if (userResponses.parkStyle === 'Rencontre personnage' && characterMeetTimes) {
+            return (
+                <View style={styles.meetTimesContainer}>
+                    <Text style={styles.question}>Horaires des rencontres personnages :</Text>
+                    {characterMeetTimes.map((time, index) => (
+                        <Text key={index} style={styles.timeText}>{time}</Text>
+                    ))}
+                </View>
+            );
+        }
+        return null;
+    };
+
+    const renderFarnienteMessage = () => {
+        if (userResponses.parkStyle === 'Farniente') {
+            return (
+                <View style={styles.farnienteContainer}>
+                    <Text style={styles.farnienteText}>Profite bien de ta prochaine journée !</Text>
+                </View>
+            );
+        }
+        return null;
+    };
+
     return (
         <SafeAreaView style={styles.homePage}>
             {width > 768 && <Navbar />}
             <View style={styles.content}>
-                {/* Afficher le compte à rebours s'il est disponible */}
-                {visitDate && <CountdownTimer targetDate={visitDate} />}
+                {/* Afficher le compte à rebours pour les nouveaux visiteurs */}
+                {!isReturningVisitor && visitDate && (
+                    <View style={styles.countdownContainer}>
+                        <Text style={styles.countdownTitle}>Votre visite est dans :</Text>
+                        <CountdownTimer targetDate={visitDate} />
+                    </View>
+                )}
 
+                {/* Afficher des informations spécifiques pour les visiteurs réguliers */}
+                {isReturningVisitor && (
+                    <View>
+                        {renderVisitCount()}
+                        {renderAnnualPassInfo()}
+                        {renderCharacterMeetTimes()}
+                        {renderFarnienteMessage()}
+                    </View>
+                )}
+
+                {/* Afficher les favoris pour tous les utilisateurs */}
                 {filteredFavorites.length > 0 ? (
                     <ScrollView>
                         <View style={styles.attractionsSection}>
@@ -159,7 +269,6 @@ const HomeScreen = () => {
             {width <= 768 && <BottomNav />}
         </SafeAreaView>
     );
-
 };
 
 const styles = StyleSheet.create({
@@ -180,21 +289,68 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#777',
     },
-    FavoriteCard: {
+    question: {
+        fontSize: 18,
         marginVertical: 10,
+        textAlign: 'center',
+        color: '#333',
+        fontWeight: 'bold',
+    },
+    passContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    passImage: {
+        width: 150,
+        height: 100,
+        resizeMode: 'contain',
+    },
+    passText: {
+        fontSize: 16,
+        marginVertical: 5,
+        textAlign: 'center',
+    },
+    meetTimesContainer: {
+        marginVertical: 20,
+    },
+    timeText: {
+        fontSize: 16,
+        marginVertical: 5,
+        textAlign: 'center',
+    },
+    farnienteContainer: {
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    mickeyImage: {
+        width: 200,
+        height: 200,
+        resizeMode: 'contain',
+    },
+    farnienteText: {
+        fontSize: 18,
+        marginTop: 10,
+        textAlign: 'center',
     },
     countdownContainer: {
-        backgroundColor: '#333', // Fond sombre pour mettre en valeur le texte
-        padding: 10, // Espacement autour du texte
-        borderRadius: 10, // Bords arrondis pour un look plus moderne
-        marginBottom: 20, // Espacement en bas
-        alignItems: 'center', // Centrer le texte horizontalement
+        backgroundColor: '#333',
+        padding: 10,
+        borderRadius: 10,
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+    countdownTitle: {
+        fontSize: 24,
+        color: '#fff',
+        fontWeight: 'bold',
+        letterSpacing: 1.5,
+        marginBottom: 10,
     },
     countdownText: {
-        fontSize: 24, // Taille de police plus grande pour le texte
-        color: '#fff', // Texte blanc pour contraster avec le fond sombre
-        fontWeight: 'bold', // Texte en gras pour le rendre plus lisible
-        letterSpacing: 1.5, // Espacement entre les lettres pour une meilleure lisibilité
+        fontSize: 24,
+        color: '#fff',
+        fontWeight: 'bold',
+        letterSpacing: 1.5,
     },
 });
 

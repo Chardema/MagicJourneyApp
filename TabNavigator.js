@@ -6,7 +6,6 @@ import HoursScreen from './screens/HoursScreen';
 import AttractionsScreen from './screens/AttractionsScreen';
 import ShowsScreen from './screens/SpectacleScreen';
 import MagicAITripScreen from './screens/MagicAITripScreen';
-import ReturnVisitorPage from './screens/ReturnVisitorPage'; // Importer ReturnVisitorPage
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Tab = createBottomTabNavigator();
@@ -26,12 +25,7 @@ const TabNavigator = () => {
 
     return (
         <Tab.Navigator tabBar={(props) => <BottomNav {...props} />}>
-            {/* Si l'utilisateur a déjà visité Disneyland, afficher ReturnVisitorPage comme écran d'accueil */}
-            {visitedDisney === 'Oui' ? (
-                <Tab.Screen name="Retour" component={ReturnVisitorPage} />
-            ) : (
-                <Tab.Screen name="Home" component={HomeScreen} />
-            )}
+            <Tab.Screen name="Home" component={HomeScreen} />
             <Tab.Screen name="Hours" component={HoursScreen} />
             <Tab.Screen name="Attractions" component={AttractionsScreen} />
             <Tab.Screen name="Spectacle" component={ShowsScreen} />
