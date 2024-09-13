@@ -7,8 +7,9 @@ import {
     SET_ATTRACTIONS,
     SET_FAVORITES,
     TOGGLE_FAVORITE,
-    TOGGLE_FAVORITE_SHOW,
+    TOGGLE_FAVORITE_SHOW, SET_SHOWS,
 } from './types';
+import axios from "axios";
 
 export const setRawRideData = (data) => ({
     type: SET_RAW_RIDE_DATA,
@@ -30,10 +31,17 @@ export const setSearchTerm = (term) => ({
     payload: term,
 });
 
-export const setAttractions = (attractions) => ({
-    type: SET_ATTRACTIONS,
-    payload: attractions,
-});
+export const setAttractions = () => async (dispatch) => {
+    try {
+        const response = await axios.get('https://eurojourney.azurewebsites.net/api/attractions');
+        dispatch({
+            type: SET_ATTRACTIONS,
+            payload: response.data,
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des attractions :', error);
+    }
+};
 
 export const setFavorites = (favorites) => ({
     type: SET_FAVORITES,
@@ -44,6 +52,18 @@ export const toggleFavorite = (attractionId) => ({
     type: TOGGLE_FAVORITE,
     payload: attractionId,
 });
+// Action pour récupérer les spectacles depuis l'API
+export const setShows = () => async dispatch => {
+    try {
+        const response = await axios.get('https://eurojourney.azurewebsites.net/api/shows');
+        dispatch({
+            type: SET_SHOWS,
+            payload: response.data,
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des spectacles :', error);
+    }
+};
 
 
 export const toggleFavoriteShow = (show) => ({

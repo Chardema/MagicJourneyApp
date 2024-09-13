@@ -1,16 +1,15 @@
 // store.js
-import { createStore, combineReducers } from 'redux';
-import attractionsReducer from './reducer/Attractionreducer'; // Assurez-vous que ce nom correspond à l'exportation par défaut de votre fichier reducer
+import { configureStore } from '@reduxjs/toolkit';
+import attractionsReducer from './reducer/Attractionreducer';
 import favoritesReducer from './reducer/favoriteReducer';
+import showsReducer from './reducer/showsReducer';
 
-const rootReducer = combineReducers({
-    attractions: attractionsReducer,
-    favorites: favoritesReducer,
+const store = configureStore({
+    reducer: {
+        attractions: attractionsReducer,
+        favorites: favoritesReducer,
+        shows: showsReducer,
+    },
 });
-
-const store = createStore(
-    rootReducer,
-    // Ajoutez ici des middlewares ou des extensions, comme redux-devtools-extension si nécessaire
-);
 
 export default store;

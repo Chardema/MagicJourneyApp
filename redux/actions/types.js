@@ -6,6 +6,7 @@ export const SET_RAW_RIDE_DATA = 'SET_RAW_RIDE_DATA';
 export const SET_FILTERED_RIDE_DATA = 'SET_FILTERED_RIDE_DATA';
 export const SET_CLOSED_RIDE_DATA = 'SET_CLOSED_RIDE_DATA';
 export const SET_SEARCH_TERM = 'SET_SEARCH_TERM';
+export const SET_SHOWS = 'SET_SHOWS';
 
 // Types d'actions pour les favoris
 export const SET_FAVORITES = 'SET_FAVORITES';

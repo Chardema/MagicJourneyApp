@@ -159,20 +159,14 @@ const AttractionsScreen = () => {
         return () => clearInterval(intervalId); // Nettoie l'intervalle lors du démontage du composant
     }, [fetchData, initialLoad]);
 
-    // Met à jour les données filtrées uniquement si les données source ont changé
     useEffect(() => {
         if (rawRideData && initialLoad) {
             const newFilteredData = applyFilters(rawRideData);
             dispatch(setFilteredRideData(newFilteredData));
+            setLoading(false); // Définir loading à false ici
         }
     }, [rawRideData, applyFilters, dispatch, initialLoad]);
 
-    // Vérifier que les données sont prêtes et arrêter le chargement
-    useEffect(() => {
-        if (rawRideData && filteredRideData && initialLoad) {
-            setLoading(false);
-        }
-    }, [rawRideData, filteredRideData, initialLoad]);
 
     // Gestion du changement de filtre
     const handleFilterChange = (filter, value) => {
