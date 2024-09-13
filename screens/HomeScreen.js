@@ -1,3 +1,4 @@
+// HomeScreen.js
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -13,19 +14,21 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import CheckBox from '@react-native-community/checkbox';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {setAttractions, setShows, toggleFavoriteShow} from "../redux/actions/actions";
-import BottomNav from "../components/mobileNavbar";
+import { setAttractions, setShows } from '../redux/actions/actions';
+import BottomNav from '../components/mobileNavbar';
+import AttractionCard from '../components/AttractionCard';
 
 const HomeScreen = () => {
     // Récupérer les attractions et spectacles depuis Redux
-    const attractions = useSelector(state => state.attractions.attractions);  // Attractions
-    const shows = useSelector(state => state.shows.shows);  // Spectacles
+    const attractions = useSelector((state) => state.attractions.attractions);
+    const shows = useSelector((state) => state.shows.shows);
 
     const [userName, setUserName] = useState('');
     const [visitDate, setVisitDate] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [selectedAttractions, setSelectedAttractions] = useState([]);
     const [selectedShows, setSelectedShows] = useState([]);
+    const [plannedDay, setPlannedDay] = useState(null); // Nouvel état pour stocker la journée planifiée
     const { width } = Dimensions.get('window');
     const dispatch = useDispatch();
 
@@ -42,18 +45,32 @@ const HomeScreen = () => {
                     }
                 }
             } catch (error) {
-                console.error("Erreur lors du chargement des données utilisateur:", error);
+                console.error('Erreur lors du chargement des données utilisateur:', error);
             }
         };
         loadUserData();
     }, []);
 
-    // Récupérer les spectacles via l'API lors du premier rendu
+    // Récupérer les spectacles et attractions via l'API lors du premier rendu
     useEffect(() => {
-        dispatch(setShows());       // Pour récupérer les spectacles
-        dispatch(setAttractions()); // Pour récupérer les attractions
+        dispatch(setShows());
+        dispatch(setAttractions());
     }, [dispatch]);
 
+    // Récupérer la journée planifiée depuis AsyncStorage
+    useEffect(() => {
+        const loadPlannedDay = async () => {
+            try {
+                const storedPlannedDay = await AsyncStorage.getItem('plannedDay');
+                if (storedPlannedDay) {
+                    setPlannedDay(JSON.parse(storedPlannedDay));
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement de la journée planifiée :', error);
+            }
+        };
+        loadPlannedDay();
+    }, []);
 
     const handleCreateDay = () => {
         setShowModal(true);
@@ -64,37 +81,59 @@ const HomeScreen = () => {
     };
 
     const toggleAttractionSelection = (attractionId) => {
-        setSelectedAttractions(prevState =>
+        setSelectedAttractions((prevState) =>
             prevState.includes(attractionId)
-                ? prevState.filter(id => id !== attractionId)
+                ? prevState.filter((id) => id !== attractionId)
                 : [...prevState, attractionId]
         );
     };
 
     const toggleShowSelection = (showId) => {
-        setSelectedShows(prevState =>
+        setSelectedShows((prevState) =>
             prevState.includes(showId)
-                ? prevState.filter(id => id !== showId)
+                ? prevState.filter((id) => id !== showId)
                 : [...prevState, showId]
         );
     };
 
     const handleSubmitPlan = async () => {
         try {
-            // Enregistrer les attractions et spectacles sélectionnés dans AsyncStorage ou traiter comme nécessaire
-            const plannedDay = {
+            const plannedDayData = {
                 selectedAttractions,
                 selectedShows,
                 date: new Date().toISOString(),
             };
-            await AsyncStorage.setItem('plannedDay', JSON.stringify(plannedDay));
+            await AsyncStorage.setItem('plannedDay', JSON.stringify(plannedDayData));
+            // Mettre à jour l'état
+            setPlannedDay(plannedDayData);
+            // Réinitialiser les sélections
+            setSelectedAttractions([]);
+            setSelectedShows([]);
             // Fermer le modal
             setShowModal(false);
-            console.log('Nouvelle journée créée avec les attractions et spectacles sélectionnés :', plannedDay);
+            console.log(
+                'Nouvelle journée créée avec les attractions et spectacles sélectionnés :',
+                plannedDayData
+            );
         } catch (error) {
             console.error('Erreur lors de la sauvegarde de la journée :', error);
         }
     };
+
+    // Récupérer les données complètes des attractions et spectacles sélectionnés
+    const selectedAttractionsData =
+        plannedDay && plannedDay.selectedAttractions
+            ? plannedDay.selectedAttractions
+                .map((id) => attractions.find((attraction) => attraction._id === id))
+                .filter((item) => item)
+            : [];
+
+    const selectedShowsData =
+        plannedDay && plannedDay.selectedShows
+            ? plannedDay.selectedShows
+                .map((id) => shows.find((show) => show._id === id))
+                .filter((item) => item)
+            : [];
 
     return (
         <SafeAreaView style={styles.homePage}>
@@ -122,6 +161,49 @@ const HomeScreen = () => {
                     style={styles.planDayButton}
                 />
 
+                {/* Afficher la journée planifiée */}
+                {plannedDay && (
+                    <View style={styles.plannedDayContainer}>
+                        <Text style={styles.sectionTitle}>Votre journée planifiée :</Text>
+                        {/* Afficher les attractions sélectionnées */}
+                        <Text style={styles.subSectionTitle}>Attractions sélectionnées :</Text>
+                        {selectedAttractionsData.length > 0 ? (
+                            <View style={styles.attractionsList}>
+                                {selectedAttractionsData.map((item) => (
+                                    <AttractionCard
+                                        key={item._id}
+                                        item={item}
+                                        onToggleFavorite={null} // Vous pouvez activer cette fonctionnalité si vous le souhaitez
+                                        onDetailsPress={null} // Vous pouvez activer cette fonctionnalité si vous le souhaitez
+                                        isFavorite={false} // Vous pouvez gérer les favoris si nécessaire
+                                    />
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={styles.itemText}>Aucune attraction sélectionnée.</Text>
+                        )}
+
+                        {/* Afficher les spectacles sélectionnés */}
+                        <Text style={styles.subSectionTitle}>Spectacles sélectionnés :</Text>
+                        {selectedShowsData.length > 0 ? (
+                            <View style={styles.attractionsList}>
+                                {selectedShowsData.map((item) => (
+                                    <AttractionCard
+                                        key={item._id}
+                                        item={item}
+                                        type="show"
+                                        onToggleFavorite={null}
+                                        onDetailsPress={null}
+                                        isFavorite={false}
+                                    />
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={styles.itemText}>Aucun spectacle sélectionné.</Text>
+                        )}
+                    </View>
+                )}
+
                 {/* Modal pour la création d'une nouvelle journée */}
                 <Modal
                     visible={showModal}
@@ -136,7 +218,7 @@ const HomeScreen = () => {
                             <ScrollView style={styles.selectionList}>
                                 {/* Liste des attractions */}
                                 <Text style={styles.sectionTitle}>Sélectionnez vos attractions :</Text>
-                                {attractions.map(attraction => (
+                                {attractions.map((attraction) => (
                                     <View key={attraction._id} style={styles.itemContainer}>
                                         <CheckBox
                                             value={selectedAttractions.includes(attraction._id)}
@@ -148,7 +230,7 @@ const HomeScreen = () => {
 
                                 {/* Liste des spectacles */}
                                 <Text style={styles.sectionTitle}>Sélectionnez vos spectacles :</Text>
-                                {shows.map(show => (
+                                {shows.map((show) => (
                                     <View key={show._id} style={styles.itemContainer}>
                                         <CheckBox
                                             value={selectedShows.includes(show._id)}
@@ -169,7 +251,6 @@ const HomeScreen = () => {
                         </View>
                     </View>
                 </Modal>
-
             </View>
             {width <= 768 && <BottomNav />}
         </SafeAreaView>
@@ -203,6 +284,31 @@ const styles = StyleSheet.create({
     planDayButton: {
         marginVertical: 20,
     },
+    plannedDayContainer: {
+        backgroundColor: '#fff',
+        padding: 15,
+        borderRadius: 10,
+        marginVertical: 20,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    subSectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginTop: 10,
+    },
+    attractionsList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    itemText: {
+        fontSize: 16,
+        marginLeft: 10,
+    },
     modalBackground: {
         flex: 1,
         justifyContent: 'center',
@@ -215,6 +321,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 20,
         alignItems: 'center',
+        maxHeight: '80%',
     },
     modalTitle: {
         fontSize: 20,
@@ -223,20 +330,12 @@ const styles = StyleSheet.create({
     },
     selectionList: {
         width: '100%',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginVertical: 10,
+        marginBottom: 20,
     },
     itemContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 10,
-    },
-    itemText: {
-        fontSize: 16,
-        marginLeft: 10,
     },
     closeButton: {
         marginTop: 10,

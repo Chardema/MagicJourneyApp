@@ -38,6 +38,8 @@ import {
     getSearchTerm,
 } from '../components/utils';
 import LoadingScreen from '../components/LoadingScreenData';
+import AttractionCard from '../components/AttractionCard';
+
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
@@ -261,54 +263,13 @@ const AttractionsScreen = () => {
                                 const changeTimestamp = changeTimestamps[ride._id];
 
                                 return (
-                                    <View key={ride._id} style={styles.card}>
-                                        <View style={styles.imageWrapper}>
-                                            <Image
-                                                source={attractionImages[ride.name]}
-                                                style={styles.imgAttraction}
-                                            />
-                                            <TouchableOpacity
-                                                style={styles.favoriteIconWrapper}
-                                                onPress={() => handleToggleFavorite(ride._id)}
-                                            >
-                                                <Icon
-                                                    name="heart"
-                                                    size={30}
-                                                    color={isFavorite ? 'red' : 'white'}
-                                                    style={{ opacity: isFavorite ? 1 : 0.5 }}
-                                                />
-                                            </TouchableOpacity>
-                                        </View>
-                                        <View style={styles.cardText}>
-                                            <Text style={styles.attractionName}>{ride.name}</Text>
-                                            <Text style={styles.attractionLand}>{ride.land}</Text>
-                                            {getArrowIcon(currentWaitTime, previousWaitTime, changeTimestamp) && (
-                                                <View style={styles.arrowWrapper}>
-                                                    {getArrowIcon(currentWaitTime, previousWaitTime, changeTimestamp)}
-                                                </View>
-                                            )}
-                                            <Button
-                                                title="Détails"
-                                                onPress={() => openModalWithAttraction(ride)}
-                                            />
-                                        </View>
-                                        <View
-                                            style={[
-                                                styles.waitTime,
-                                                isFavorite ? styles.waitTimeFavorite : null,
-                                            ]}
-                                        >
-                                            <Text>
-                                                {ride.status === 'DOWN'
-                                                    ? 'Indispo'
-                                                    : ride.status === 'CLOSED'
-                                                        ? 'Fermée'
-                                                        : ride.waitTime === null
-                                                            ? 'Sans file'
-                                                            : `${ride.waitTime} min`}
-                                            </Text>
-                                        </View>
-                                    </View>
+                                    <AttractionCard
+                                        key={ride._id}
+                                        item={ride}
+                                        onToggleFavorite={handleToggleFavorite}
+                                        onDetailsPress={openModalWithAttraction}
+                                        isFavorite={isFavorite}
+                                    />
                                 );
                             })
                         ) : (

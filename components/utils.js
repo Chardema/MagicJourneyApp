@@ -53,9 +53,12 @@ export const formatImageName = (name) => {
             .replace(/é/g, 'e')
             .replace(/è/g, 'e')
             .replace(/'/g, '')
-            .replace(/[^a-zA-Z0-9]/g, '')
+            .replace(/ /g, '') // Supprime les espaces uniquement
+            .replace(/[^a-zA-Z0-9]/g, '') // Supprime tous les autres caractères spéciaux sauf les lettres et chiffres
         + '.jpg';
 };
+
+
 
 export const formatTime = (dateString) => {
     if (!dateString) return 'Heure invalide';
@@ -130,11 +133,27 @@ export const attractionNames = [
     "Slinky® Dog Zigzag Spin",
     "Les Tapis Volants - Flying Carpets Over Agrabah®"
 ];
+// Dans utils.js
+export const normalizeName = (name) => {
+    return name
+        .normalize('NFD') // Décompose les caractères accentués
+        .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
+        .replace(/[^a-zA-Z0-9]/g, '') // Supprime les caractères non alphanumériques sauf lettres et chiffres
+        .trim(); // Conserve les majuscules et minuscules
+};
+
+
+// Dans utils.js
 export const attractionImages = attractionNames.reduce((acc, name) => {
-    const imageName = formatImageName(name);
-    acc[name] = importImage(imageName);
+    const normalizedName = normalizeName(name); // Conserve les majuscules
+    const imageName = formatImageName(name); // Utilise formatImageName pour correspondre aux clés de imageAssets
+    acc[normalizedName] = importImage(imageName);
     return acc;
 }, {});
+
+
+
+
 
 export const getRawRideData = state => state.attractions.rawRideData;
 export const getSearchTerm = state => state.attractions.searchTerm;
