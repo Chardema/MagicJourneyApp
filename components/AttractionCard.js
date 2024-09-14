@@ -1,14 +1,12 @@
-// AttractionCard.js
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import { attractionImages, normalizeName } from './utils'; // Ajustez le chemin
+import { View, Text, Image, StyleSheet } from 'react-native';
+import { attractionImages, normalizeName } from './utils';
 
-const AttractionCard = ({ item, type = 'attraction', onToggleFavorite, onDetailsPress, isFavorite }) => {
+const AttractionCard = ({ item }) => {
     const normalizedItemName = normalizeName(item.name);
-    const imageSource = require('../assets/default.jpg');
+    const imageSource = attractionImages[normalizedItemName] || attractionImages['default.jpg'];
 
-    console.log('Item Name:', item.name);
+    // Ajoutez un log pour vérifier comment le nom de l'image est formaté
     console.log('Normalized Item Name:', normalizedItemName);
     console.log('Image Source:', imageSource);
 
@@ -19,53 +17,14 @@ const AttractionCard = ({ item, type = 'attraction', onToggleFavorite, onDetails
                     source={imageSource}
                     style={styles.imgAttraction}
                 />
-                {onToggleFavorite && (
-                    <TouchableOpacity
-                        style={styles.favoriteIconWrapper}
-                        onPress={() => onToggleFavorite(item._id)}
-                    >
-                        <Icon
-                            name="heart"
-                            size={30}
-                            color={isFavorite ? 'red' : 'white'}
-                            style={{ opacity: isFavorite ? 1 : 0.5 }}
-                        />
-                    </TouchableOpacity>
-                )}
             </View>
             <View style={styles.cardText}>
                 <Text style={styles.attractionName}>{item.name}</Text>
                 <Text style={styles.attractionLand}>{item.land}</Text>
-                {onDetailsPress && (
-                    <TouchableOpacity
-                        onPress={() => onDetailsPress(item)}
-                        style={styles.detailsButton}
-                    >
-                        <Text style={styles.detailsButtonText}>Détails</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-            <View style={styles.waitTime}>
-                <Text>
-                    {type === 'show' ? (
-                        item.showtimes && item.showtimes.length > 0
-                            ? `Prochaine représentation : ${new Date(item.showtimes[0].startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
-                            : 'Aucune représentation prévue.'
-                    ) : (
-                        item.status === 'DOWN'
-                            ? 'Indispo'
-                            : item.status === 'CLOSED'
-                                ? 'Fermée'
-                                : item.waitTime === null
-                                    ? 'Sans file'
-                                    : `${item.waitTime} min`
-                    )}
-                </Text>
             </View>
         </View>
     );
 };
-
 
 const styles = StyleSheet.create({
     card: {
@@ -80,15 +39,10 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     imgAttraction: {
-        width: '100%',
-        height: 150,
+        width: 200, // Taille fixe pour tester
+        height: 200, // Taille fixe pour tester
         borderRadius: 8,
         marginBottom: 10,
-    },
-    favoriteIconWrapper: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
     },
     cardText: {
         alignItems: 'center',
@@ -104,25 +58,6 @@ const styles = StyleSheet.create({
         color: '#777777',
         textAlign: 'center',
         marginBottom: 10,
-    },
-    waitTime: {
-        position: 'absolute',
-        top: 10,
-        left: 10,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 15,
-        padding: 5,
-    },
-    detailsButton: {
-        marginTop: 10,
-        backgroundColor: '#007BFF',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 5,
-    },
-    detailsButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
     },
 });
 

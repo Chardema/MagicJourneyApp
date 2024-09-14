@@ -105,7 +105,7 @@ const HoursScreen = () => {
 
     return (
         <SafeAreaView style={styles.body}>
-            {width > 768 && <Navbar />}
+            {width > 768 }
             <ScrollView contentContainerStyle={styles.container}>
                 <Button onPress={toggleWeatherInfo} title={showWeatherInfo ? 'Masquer' : 'Changer de date'} />
                 {showWeatherInfo && (

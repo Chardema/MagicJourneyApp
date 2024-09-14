@@ -33,7 +33,7 @@ const images = {
     "LaTanièreduDragon.jpg": require('../assets/LaTaniereduDragon.jpg'),
     "RustlerRoundupShootinGallery.jpg": require('../assets/RustlerRoundupShootinGallery.jpg'),
     "AdventureIsle.jpg": require('../assets/AdventureIsle.jpg'),
-    "welcometostarportastarwarsencounter.jpg": require('../assets/welcometostarportastarwarsencounter.jpg'),
+    "welcometostarportastarwarsencounter.jpg": require('../assets/WelcometoStarportAStarWarsEncounter.jpg'),
     "BlancheNeigeetlesSeptNains.jpg": require('../assets/BlancheNeigeetlesSeptNains.jpg'),
     "MickeysPhilharMagic.jpg": require('../assets/MickeysPhilharMagic.jpg'),
     "PiratesoftheCaribbean.jpg": require('../assets/PiratesoftheCaribbean.jpg'),

@@ -18,7 +18,7 @@ import { setAttractions, setShows } from '../redux/actions/actions';
 import BottomNav from '../components/mobileNavbar';
 import AttractionCard from '../components/AttractionCard';
 
-const HomeScreen = () => {
+const HomeScreen = ({navigation}) => {
     // Récupérer les attractions et spectacles depuis Redux
     const attractions = useSelector((state) => state.attractions.attractions);
     const shows = useSelector((state) => state.shows.shows);
@@ -75,6 +75,12 @@ const HomeScreen = () => {
     const handleCreateDay = () => {
         setShowModal(true);
     };
+
+    useEffect(() => {
+        navigation.setOptions({
+            title: `Bienvenue, ${userName}`,
+        });
+    }, [userName, navigation]);
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -133,18 +139,34 @@ const HomeScreen = () => {
             ? plannedDay.selectedShows
                 .map((id) => shows.find((show) => show._id === id))
                 .filter((item) => item)
-            : [];
+            : []
+    const renderScheduleInfo = (schedules, parkName) => {
+        const selectedDaySchedules = schedules?.filter(schedule => schedule.date === visitDate.toISOString().split('T')[0]);
+        const operatingSchedule = selectedDaySchedules?.find(s => s.type === "OPERATING");
+
+        if (!operatingSchedule) {
+            return <Text>{parkName} : Bientôt disponible !</Text>;
+        }
+
+        return (
+            <Text>
+                {parkName} : {formatTime(new Date(operatingSchedule.openingTime))} - {formatTime(new Date(operatingSchedule.closingTime))}
+            </Text>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.homePage}>
             <View style={styles.content}>
-                {/* Afficher le prénom de l'utilisateur */}
-                {userName ? (
-                    <Text style={styles.welcomeText}>Bienvenue {userName} !</Text>
-                ) : (
-                    <Text style={styles.welcomeText}>Bienvenue !</Text>
-                )}
-
+                {/* Affichage des horaires des parcs */}
+                <View style={styles.parkHoursContainer}>
+                    <View style={styles.park}>
+                        {renderScheduleInfo(parkHours?.disneyland?.schedule, 'Le Parc Disneyland')}
+                    </View>
+                    <View style={styles.park}>
+                        {renderScheduleInfo(parkHours?.studio?.schedule, 'Les Walt Disney Studios')}
+                    </View>
+                </View>
                 {/* Afficher la date de visite */}
                 {visitDate && (
                     <View style={styles.visitInfo}>
@@ -169,15 +191,16 @@ const HomeScreen = () => {
                         <Text style={styles.subSectionTitle}>Attractions sélectionnées :</Text>
                         {selectedAttractionsData.length > 0 ? (
                             <View style={styles.attractionsList}>
-                                {selectedAttractionsData.map((item) => (
-                                    <AttractionCard
-                                        key={item._id}
-                                        item={item}
-                                        onToggleFavorite={null} // Vous pouvez activer cette fonctionnalité si vous le souhaitez
-                                        onDetailsPress={null} // Vous pouvez activer cette fonctionnalité si vous le souhaitez
-                                        isFavorite={false} // Vous pouvez gérer les favoris si nécessaire
-                                    />
-                                ))}
+                                {selectedAttractionsData.map((item) => {
+                                    console.log('Selected Attraction:', item); // Ajoutez ce log ici pour vérifier les données
+                                    return (
+                                        <AttractionCard
+                                            key={item._id}
+                                            item={item}
+                                        />
+                                    );
+                                })}
+
                             </View>
                         ) : (
                             <Text style={styles.itemText}>Aucune attraction sélectionnée.</Text>
