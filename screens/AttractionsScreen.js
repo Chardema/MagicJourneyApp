@@ -1,20 +1,16 @@
-// AttractionsScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     View,
     Text,
-    Image,
     TextInput,
     Button,
-    TouchableOpacity,
     StyleSheet,
     ScrollView,
     Modal,
-    Alert,
+    Switch,
 } from 'react-native';
 import axios from 'axios';
-import Icon from 'react-native-vector-icons/FontAwesome';
 import { useWindowWidth } from '../components/utils';
 import {
     setAttractions,
@@ -27,11 +23,9 @@ import BottomNav from '../components/mobileNavbar';
 import AttractionsMap from '../components/AttractionsMap';
 import AttractionModal from '../components/ModalAttractions';
 import { Picker } from '@react-native-picker/picker';
-import { Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-    attractionImages,
     getFilteredRideData,
     getRawRideData,
     getFilters,
@@ -40,7 +34,6 @@ import {
 import LoadingScreen from '../components/LoadingScreenData';
 import AttractionCard from '../components/AttractionCard';
 
-
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
     const rawRideData = useSelector(getRawRideData);
@@ -48,6 +41,7 @@ const AttractionsScreen = () => {
     const favorites = useSelector((state) => state.favorites.favorites);
     const filters = useSelector(getFilters);
     const filteredRideData = useSelector(getFilteredRideData);
+
     const [viewMode, setViewMode] = useState('list');
     const [previousWaitTimes, setPreviousWaitTimes] = useState({});
     const [changeTimestamps, setChangeTimestamps] = useState({});
@@ -55,7 +49,9 @@ const AttractionsScreen = () => {
     const [selectedAttraction, setSelectedAttraction] = useState(null);
     const [filtersModalVisible, setFiltersModalVisible] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [initialLoad, setInitialLoad] = useState(false);
+    const [initialLoad, setInitialLoad] = useState(false); // Pour garantir que les données ne sont récupérées qu'une seule fois
+    const [isFetching, setIsFetching] = useState(false);   // Pour contrôler les appels API
+
     const width = useWindowWidth();
     const navigation = useNavigation();
 
@@ -65,50 +61,48 @@ const AttractionsScreen = () => {
     }, [navigation]);
 
     // Fonction pour appliquer les filtres
-    const applyFilters = useCallback(
-        (data) => {
-            let filteredData = [...data];
+    const applyFilters = useCallback((data) => {
+        let filteredData = [...data];
 
-            // Filtre par land
-            if (filters.selectedLand !== 'all') {
-                filteredData = filteredData.filter((ride) => ride.land === filters.selectedLand);
-            }
+        // Appliquer les filtres
+        if (filters.selectedLand !== 'all') {
+            filteredData = filteredData.filter((ride) => ride.land === filters.selectedLand);
+        }
 
-            // Filtre par type
-            if (filters.selectedType !== 'all') {
-                filteredData = filteredData.filter((ride) => ride.type === filters.selectedType);
-            }
+        if (filters.selectedType !== 'all') {
+            filteredData = filteredData.filter((ride) => ride.type === filters.selectedType);
+        }
 
-            // Filtre par temps d'attente
-            if (filters.showShortWaitTimesOnly) {
-                filteredData = filteredData.filter((ride) => ride.waitTime && ride.waitTime < 40);
-            }
+        if (filters.showShortWaitTimesOnly) {
+            filteredData = filteredData.filter((ride) => ride.waitTime && ride.waitTime < 40);
+        }
 
-            // Masquer les attractions fermées
-            if (filters.hideClosedRides) {
-                filteredData = filteredData.filter((ride) => ride.status !== 'CLOSED');
-            }
+        if (filters.hideClosedRides) {
+            filteredData = filteredData.filter((ride) => ride.status !== 'CLOSED');
+        }
 
-            // Filtre par terme de recherche
-            if (searchTerm) {
-                filteredData = filteredData.filter((ride) =>
-                    ride.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-            }
+        if (searchTerm) {
+            filteredData = filteredData.filter((ride) =>
+                ride.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
 
-            return filteredData;
-        },
-        [filters, searchTerm]
-    );
+        return filteredData;
+    }, [filters, searchTerm]);
 
     // Fonction pour récupérer les données
     const fetchData = useCallback(async () => {
+        // Empêche de lancer la requête si déjà en cours
+        if (isFetching) return;
+        setIsFetching(true);
+
         try {
             const cachedData = await AsyncStorage.getItem('attractionsData');
             const cachedWaitTimes = await AsyncStorage.getItem('waitTimes');
             let parsedData = [];
             let parsedWaitTimes = {};
 
+            // Utiliser les données en cache si disponibles
             if (cachedData) {
                 parsedData = JSON.parse(cachedData);
                 dispatch(setRawRideData(parsedData));
@@ -120,45 +114,50 @@ const AttractionsScreen = () => {
                 setPreviousWaitTimes(parsedWaitTimes);
             }
 
-            const response = await axios.get('https://eurojourney.azurewebsites.net/api/attractions');
-            const rideData = response.data;
+            // Si les données en cache sont absentes ou si c'est le premier chargement, faire un appel API
+            if (!cachedData || !initialLoad) {
+                const response = await axios.get('https://servermagic.vercel.app/api/attractions');
+                const rideData = response.data;
 
-            // Vérifie si les données ont changé avant de les sauvegarder et de les dispatcher
-            if (JSON.stringify(rideData) !== JSON.stringify(rawRideData)) {
-                await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
-                dispatch(setRawRideData(rideData));
-                dispatch(setAttractions(rideData));
+                // Vérifier si les données ont changé avant de les sauvegarder
+                if (JSON.stringify(rideData) !== JSON.stringify(rawRideData)) {
+                    await AsyncStorage.setItem('attractionsData', JSON.stringify(rideData));
+                    dispatch(setRawRideData(rideData));
+                    dispatch(setAttractions(rideData));
 
-                const newPreviousWaitTimes = {};
-                rideData.forEach((ride) => {
-                    const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
-                    newPreviousWaitTimes[ride._id] = {
-                        currentWaitTime: ride.waitTime,
-                        previousWaitTime: prevWaitTime || null,
-                        hadPreviousWaitTime: !!prevWaitTime,
-                    };
-                });
+                    const newPreviousWaitTimes = {};
+                    rideData.forEach((ride) => {
+                        const prevWaitTime = previousWaitTimes[ride._id]?.currentWaitTime;
+                        newPreviousWaitTimes[ride._id] = {
+                            currentWaitTime: ride.waitTime,
+                            previousWaitTime: prevWaitTime || null,
+                            hadPreviousWaitTime: !!prevWaitTime,
+                        };
+                    });
 
-                setPreviousWaitTimes(newPreviousWaitTimes);
-                await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
+                    setPreviousWaitTimes(newPreviousWaitTimes);
+                    await AsyncStorage.setItem('waitTimes', JSON.stringify(newPreviousWaitTimes));
+                }
             }
         } catch (error) {
             console.error('Erreur lors de la récupération des attractions:', error);
         } finally {
-            setInitialLoad(true); // Indiquer que le chargement initial est terminé
+            setInitialLoad(true);  // Indiquer que le premier chargement est fait
+            setIsFetching(false);  // Fin de la requête
         }
-    }, [dispatch, previousWaitTimes, rawRideData]);
+    }, [dispatch, previousWaitTimes, rawRideData, initialLoad, isFetching]);
 
-    // Fetch des données lors du premier montage et toutes les minutes
+    // Récupérer les données une seule fois lors du premier montage et mettre à jour toutes les 60 secondes
     useEffect(() => {
         if (!initialLoad) {
-            fetchData();
+            fetchData(); // Charger les données seulement si c'est la première fois
         }
+
         const intervalId = setInterval(() => {
             fetchData();
-        }, 60000); // Met à jour toutes les 60 secondes
+        }, 60000); // Mettre à jour toutes les 60 secondes
 
-        return () => clearInterval(intervalId); // Nettoie l'intervalle lors du démontage du composant
+        return () => clearInterval(intervalId); // Nettoyer l'intervalle lors du démontage du composant
     }, [fetchData, initialLoad]);
 
     useEffect(() => {
@@ -168,7 +167,6 @@ const AttractionsScreen = () => {
             setLoading(false); // Définir loading à false ici
         }
     }, [rawRideData, applyFilters, dispatch, initialLoad]);
-
 
     // Gestion du changement de filtre
     const handleFilterChange = (filter, value) => {
@@ -196,23 +194,6 @@ const AttractionsScreen = () => {
         setModalOpen(true);
     };
 
-    // Gestion des icônes de changement de temps d'attente
-    const getArrowIcon = (currentWaitTime, previousWaitTime, changeTimestamp) => {
-        const now = Date.now();
-        const timeElapsed = (now - changeTimestamp) / 1000 / 60;
-
-        if (previousWaitTime != null && timeElapsed < 2) {
-            if (currentWaitTime < previousWaitTime) {
-                return <Icon name="arrow-down" size={20} color="green" />;
-            } else if (currentWaitTime > previousWaitTime) {
-                return <Icon name="arrow-up" size={20} color="red" />;
-            } else {
-                return <Icon name="minus" size={20} color="grey" />;
-            }
-        }
-        return null;
-    };
-
     // Affichage de l'écran de chargement si les données sont en cours de chargement
     if (loading || !rawRideData || !filteredRideData) {
         return <LoadingScreen />;
@@ -220,7 +201,6 @@ const AttractionsScreen = () => {
 
     return (
         <View style={styles.bodyAttraction}>
-            {width > 768 && <Navbar />}
             <View style={styles.header}>
                 <Button
                     title="Liste"
@@ -252,11 +232,6 @@ const AttractionsScreen = () => {
                     <View style={styles.attractionsList}>
                         {filteredRideData && filteredRideData.length > 0 ? (
                             filteredRideData.map((ride) => {
-                                if (!ride || !ride._id) {
-                                    console.error('Invalid ride data:', ride);
-                                    return null;
-                                }
-
                                 const isFavorite = favorites.some((fav) => fav._id === ride._id);
                                 const previousWaitTime = previousWaitTimes[ride._id]?.previousWaitTime;
                                 const currentWaitTime = ride.waitTime;
@@ -281,7 +256,6 @@ const AttractionsScreen = () => {
                 <View style={{ flex: 1 }}>
                     <AttractionsMap
                         attractions={filteredRideData || []}
-                        getWaitTimeColor={(waitTime) => <Text>{waitTime} min</Text>}
                     />
                 </View>
             )}
@@ -306,10 +280,6 @@ const AttractionsScreen = () => {
                                 <Picker.Item label="Fantasyland" value="Fantasyland" />
                                 <Picker.Item label="Frontierland" value="Frontierland" />
                                 <Picker.Item label="Discoveryland" value="Discoveryland" />
-                                <Picker.Item label="Main Street, U.S.A" value="Main Street, U.S.A" />
-                                <Picker.Item label="Production Courtyard" value="Production Courtyard" />
-                                <Picker.Item label="Toon Studio" value="Toon Studio" />
-                                <Picker.Item label="Avengers Campus" value="Avengers Campus" />
                             </Picker>
                         </View>
                         <View style={styles.filterOption}>
@@ -322,11 +292,6 @@ const AttractionsScreen = () => {
                                 <Picker.Item label="Types d'attractions" value="all" />
                                 <Picker.Item label="Famille" value="Famille" />
                                 <Picker.Item label="Sensation" value="Sensation" />
-                                <Picker.Item label="Sans file d’attente" value="Sans file d’attente" />
-                                <Picker.Item
-                                    label="Rencontre avec les personnages"
-                                    value="Rencontre avec les personnages"
-                                />
                             </Picker>
                         </View>
                         <View style={styles.checkbox}>
@@ -420,62 +385,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-    },
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 10,
-        padding: 10,
-        marginBottom: 20,
-        width: '48%',
-        minWidth: '48%',
-        maxWidth: '48%',
-    },
-    imageWrapper: {
-        position: 'relative',
-    },
-    imgAttraction: {
-        width: '100%',
-        height: 150,
-        borderRadius: 8,
-        marginBottom: 10,
-    },
-    favoriteIconWrapper: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-    },
-    cardText: {
-        alignItems: 'center',
-    },
-    attractionName: {
-        fontWeight: 'bold',
-        fontSize: 16,
-        color: '#333333',
-        textAlign: 'center',
-    },
-    attractionLand: {
-        fontSize: 14,
-        color: '#777777',
-        textAlign: 'center',
-        marginBottom: 10,
-    },
-    waitTime: {
-        position: 'absolute',
-        top: 10,
-        left: 10,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 15,
-        padding: 5,
-        color: '#333333',
-        fontSize: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    waitTimeFavorite: {
-        backgroundColor: '#FFD700',
-    },
-    arrowWrapper: {
-        marginTop: 5,
     },
     modalOverlay: {
         flex: 1,

@@ -18,7 +18,7 @@ export const formatDate = (dateString) => {
 
 export const fetchFullShowInfo = async (showId) => {
     try {
-        const response = await axios.get('https://eurojourney.azurewebsites.net/api/shows');
+        const response = await axios.get('https://servermagic.vercel.app/api/shows');
         const shows = response.data;
         return shows.find(show => show.id === showId);
     } catch (error) {

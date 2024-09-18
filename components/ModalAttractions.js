@@ -5,20 +5,6 @@ import { FontAwesome } from '@expo/vector-icons';
 const AttractionModal = ({ isOpen, onClose, attractionDetails }) => {
     const [averageWaitTimes, setAverageWaitTimes] = useState({ morning: null, afternoon: null, evening: null });
 
-    useEffect(() => {
-        if (isOpen) {
-            fetch(`https://eurojourney.azurewebsites.net/api/wait-times/average-period/${attractionDetails._id}`)
-                .then(response => response.json())
-                .then(data => {
-                    setAverageWaitTimes({
-                        morning: data.morning !== null ? data.morning.toFixed(1) : null,
-                        afternoon: data.afternoon !== null ? data.afternoon.toFixed(1) : null,
-                        evening: data.evening !== null ? data.evening.toFixed(1) : null
-                    });
-                })
-                .catch(error => console.error('Error fetching average wait times by period:', error));
-        }
-    }, [isOpen, attractionDetails._id]);
 
     if (!isOpen) return null;
 

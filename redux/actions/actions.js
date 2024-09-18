@@ -33,7 +33,7 @@ export const setSearchTerm = (term) => ({
 
 export const setAttractions = () => async (dispatch) => {
     try {
-        const response = await axios.get('https://eurojourney.azurewebsites.net/api/attractions');
+        const response = await axios.get('https://servermagic.vercel.app/api/attractions');
         dispatch({
             type: SET_ATTRACTIONS,
             payload: response.data,
@@ -55,7 +55,7 @@ export const toggleFavorite = (attractionId) => ({
 // Action pour récupérer les spectacles depuis l'API
 export const setShows = () => async dispatch => {
     try {
-        const response = await axios.get('https://eurojourney.azurewebsites.net/api/shows');
+        const response = await axios.get('https://servermagic.vercel.app/api/shows');
         dispatch({
             type: SET_SHOWS,
             payload: response.data,

@@ -2,7 +2,7 @@
   "name": "magicjourny",
   "version": "1.0.0",
   "scripts": {
-    "start": "NODE_ENV=development expo start --dev-client",
+    "start": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web"
@@ -12,7 +12,6 @@
     "@expo/vector-icons": "^14.0.2",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/checkbox": "^0.5.17",
-    "@react-native-community/datetimepicker": "8.0.1",
     "@react-native-community/masked-view": "^0.1.11",
     "@react-native-picker/picker": "2.7.5",
     "@react-native/metro-config": "^0.74.86",
@@ -21,9 +20,9 @@
     "@react-navigation/stack": "^6.4.1",
     "@reduxjs/toolkit": "^2.2.7",
     "axios": "^1.7.2",
-    "expo": "~51.0.24",
+    "expo": "^51.0.32",
     "expo-constants": "~16.0.2",
-    "expo-dev-client": "~4.0.25",
+    "expo-dev-client": "^4.0.26",
     "expo-device": "~6.0.2",
     "expo-haptics": "~13.0.1",
     "expo-location": "^17.0.1",

@@ -1,11 +1,12 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { Provider } from 'react-redux';
-import store from './redux/store';
-import MainStackNavigator from './MainStackNavigator'; // Import du MainStackNavigator
+import { NavigationContainer } from '@react-navigation/native';
+import MainStackNavigator from './MainStackNavigator';
+import store from './redux/store'; // Assurez-vous que le store est correctement configuré et exporté
 
 const App = () => {
     return (
+        // Fournir le store Redux à toute l'application
         <Provider store={store}>
             <NavigationContainer>
                 <MainStackNavigator />
