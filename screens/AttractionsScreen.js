@@ -116,7 +116,7 @@ const AttractionsScreen = () => {
 
             // Si les données en cache sont absentes ou si c'est le premier chargement, faire un appel API
             if (!cachedData || !initialLoad) {
-                const response = await axios.get('https://servermagic.vercel.app/api/attractions');
+                const response = await axios.get('https://magicjourney.fly.dev/api/attractions');
                 const rideData = response.data;
 
                 // Vérifier si les données ont changé avant de les sauvegarder

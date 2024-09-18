@@ -32,7 +32,7 @@ const ShowsScreen = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get('https://servermagic.vercel.app/api/shows');
+                const response = await axios.get('https://magicjourney.fly.dev/api/shows');
                 const currentDateTime = new Date();
                 const showsDataWithNextShowtime = response.data.map(show => {
                     const nextShowtime = show.showtimes
