@@ -8,7 +8,6 @@ const initialState = {
 };
 
 const favoritesReducer = (state = initialState, action) => {
-    console.log('Action Received:', action);
     switch (action.type) {
         case SET_ATTRACTIONS:
             if (JSON.stringify(state.attractions) !== JSON.stringify(action.payload)) {

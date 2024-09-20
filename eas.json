@@ -14,6 +14,22 @@
         "distribution": "internal",
         "developmentClient": true
       }
+    },
+    "production": {
+      "ios": {
+        "credentialsSource": "remote",
+        "distribution": "store"
+      },
+      "android": {
+        "credentialsSource": "remote",
+        "buildType": "apk"
+      }
+    },
+    "testflight": {
+      "ios": {
+        "credentialsSource": "remote",
+        "distribution": "store"
+      }
     }
   }
 }

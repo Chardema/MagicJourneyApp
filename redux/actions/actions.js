@@ -64,6 +64,20 @@ export const setShows = () => async dispatch => {
         console.error('Erreur lors de la récupération des spectacles :', error);
     }
 };
+// actions.js
+
+export const setRestaurants = () => {
+    return async (dispatch) => {
+        try {
+            const response = await fetch('https://magicjourney.fly.dev/api/restaurants');
+            const data = await response.json();
+            dispatch({ type: 'SET_RESTAURANTS', payload: data });
+        } catch (error) {
+            console.error('Erreur lors du chargement des restaurants:', error);
+        }
+    };
+};
+
 
 
 export const toggleFavoriteShow = (show) => ({

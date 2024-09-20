@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Button } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Button } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,25 +12,46 @@ const PopupSurvey = ({ onClose }) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const navigation = useNavigation();
 
-    const handleAnswer = useCallback((answer, type) => {
-        if (type === 'visitDate') {
-            setShowDatePicker(true);
-        } else {
-            setResponses(current => {
-                const updatedResponses = { ...current, [type]: answer };
-
-                if (type === 'planningToVisit' && answer === 'Non') {
-                    AsyncStorage.setItem('userPreferences', JSON.stringify(updatedResponses));
+    useEffect(() => {
+        // Vérification des préférences utilisateur
+        const checkUserPreferences = async () => {
+            try {
+                const storedPreferences = await AsyncStorage.getItem('userPreferences');
+                if (storedPreferences) {
+                    // Si les préférences existent, naviguer vers HomeScreen
                     navigation.navigate('HomeScreen');
-                    onClose();
-                } else {
-                    setCurrentStep(prev => prev + 1);
                 }
+            } catch (error) {
+                console.error('Erreur lors de la récupération des préférences utilisateur:', error);
+            }
+        };
+        checkUserPreferences();
+    }, [navigation]);
 
+    const handleAnswer = useCallback(
+        (answer, type) => {
+            setResponses((current) => {
+                const updatedResponses = { ...current, [type]: answer };
+                if (type === 'planningToVisit' && answer === 'Non') {
+                    savePreferencesAndNavigate(updatedResponses);
+                } else {
+                    setCurrentStep((prev) => prev + 1);
+                }
                 return updatedResponses;
             });
+        },
+        [savePreferencesAndNavigate]
+    );
+
+    const savePreferencesAndNavigate = async (preferences) => {
+        try {
+            await AsyncStorage.setItem('userPreferences', JSON.stringify(preferences));
+            navigation.navigate('HomeScreen');
+            onClose();
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde des préférences utilisateur:', error);
         }
-    }, [navigation, onClose]);
+    };
 
     const handleDateChange = (event, selectedDate) => {
         const currentDate = selectedDate || date;
@@ -39,18 +60,9 @@ const PopupSurvey = ({ onClose }) => {
     };
 
     const handleConfirm = () => {
-        setResponses(current => {
+        setResponses((current) => {
             const updatedResponses = { ...current, visitDate: date.toISOString() };
-            AsyncStorage.setItem('userPreferences', JSON.stringify(updatedResponses)).then(() => {
-                // Stockage de la date de visite
-                AsyncStorage.setItem('visitDate', date.toISOString());
-
-                // Log pour vérifier la date stockée
-                console.log("Date de visite stockée:", date.toISOString());
-
-                navigation.navigate('MainTabs', { screen: 'HomeScreen' });
-                onClose();
-            });
+            savePreferencesAndNavigate(updatedResponses);
             return updatedResponses;
         });
     };
@@ -62,16 +74,10 @@ const PopupSurvey = ({ onClose }) => {
                 {currentStep === 0 && (
                     <>
                         <Text style={styles.question}>Avez-vous déjà visité Disneyland Paris ?</Text>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Oui', 'visitedDisney')}
-                            style={styles.answerButton}
-                        >
+                        <TouchableOpacity onPress={() => handleAnswer('Oui', 'visitedDisney')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Oui</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Non', 'visitedDisney')}
-                            style={styles.answerButton}
-                        >
+                        <TouchableOpacity onPress={() => handleAnswer('Non', 'visitedDisney')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Non</Text>
                         </TouchableOpacity>
                     </>
@@ -79,16 +85,10 @@ const PopupSurvey = ({ onClose }) => {
                 {currentStep === 1 && responses.visitedDisney === 'Non' && (
                     <>
                         <Text style={styles.question}>Prévoyez-vous de venir sur le parc bientôt ?</Text>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Oui', 'planningToVisit')}
-                            style={styles.answerButton}
-                        >
+                        <TouchableOpacity onPress={() => handleAnswer('Oui', 'planningToVisit')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Oui</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleAnswer('Non', 'planningToVisit')}
-                            style={styles.answerButton}
-                        >
+                        <TouchableOpacity onPress={() => handleAnswer('Non', 'planningToVisit')} style={styles.answerButton}>
                             <Text style={styles.buttonText}>Non</Text>
                         </TouchableOpacity>
                     </>

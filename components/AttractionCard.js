@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { attractionImages, normalizeName } from './utils';
+import {attractionImages, formatImageName} from './utils';
 
 const AttractionCard = ({ item }) => {
-    const normalizedItemName = normalizeName(item.name);
+    const normalizedItemName = formatImageName(item.name);
     const imageSource = attractionImages[normalizedItemName] || attractionImages['default.jpg'];
 
     // Ajoutez un log pour vérifier comment le nom de l'image est formaté
