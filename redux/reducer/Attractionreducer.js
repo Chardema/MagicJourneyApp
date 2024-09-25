@@ -1,8 +1,10 @@
 // reducer/AttractionReducer.js
 import { SET_ATTRACTIONS, SET_RAW_RIDE_DATA, SET_FILTERED_RIDE_DATA, SET_CLOSED_RIDE_DATA, SET_SEARCH_TERM, SET_FILTER } from "../actions/types";
+import {SET_WAIT_TIMES} from "../actions/actions";
 
 const initialState = {
     rawRideData: [],
+    isLoaded: false,
     filteredRideData: [],
     closedRideData: [],
     searchTerm: '',
@@ -23,6 +25,7 @@ const attractionsReducer = (state = initialState, action) => {
                 return {
                     ...state,
                     rawRideData: action.payload,
+                    isLoaded: true,
                 };
             }
             return state;
@@ -35,6 +38,7 @@ const attractionsReducer = (state = initialState, action) => {
                 };
             }
             return state;
+
 
         case SET_CLOSED_RIDE_DATA:
             if (JSON.stringify(state.closedRideData) !== JSON.stringify(action.payload)) {

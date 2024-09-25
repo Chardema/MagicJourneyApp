@@ -1,6 +1,6 @@
 // ActivityList.js
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, FlatList} from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import ScheduledActivityCard from "../ScheduleActivityCard";
@@ -58,8 +58,8 @@ const ActivityList = ({
     };
 
     return (
-        <DraggableFlatList
-            data={getSortedActivities()}
+        <FlatList
+            data={activities}
             keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
             renderItem={renderItem}
             onDragEnd={onDragEnd}

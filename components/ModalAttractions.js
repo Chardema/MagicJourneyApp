@@ -41,7 +41,7 @@ const AttractionModal = ({ isOpen, onClose, attractionDetails }) => {
         return recommendation;
     };
 
-    return (
+    return isOpen ? (
         <Modal
             visible={isOpen}
             transparent={true}
@@ -88,7 +88,7 @@ const AttractionModal = ({ isOpen, onClose, attractionDetails }) => {
                 </View>
             </View>
         </Modal>
-    );
+    ) : null;
 };
 
 const styles = StyleSheet.create({

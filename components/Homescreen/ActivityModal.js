@@ -1,36 +1,30 @@
-// ActivityModal.js
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    Image,
+    StyleSheet,
+    ActivityIndicator,
+} from 'react-native';
 import { Button, ButtonGroup } from 'react-native-elements';
 import ReactNativeModal from 'react-native-modal';
-import { useSelector } from 'react-redux';
-import {getCategories, getFilteredRideData} from "../../redux/selector";
 
 const ActivityModal = ({
                            isVisible,
+                           categories,
+                           activities,
                            selectedCategoryIndex,
                            setSelectedCategoryIndex,
-                           selectedActivities,
+                           selectedActivities = [],
                            onSelectActivity,
                            onConfirm,
                            dataLoaded,
                            onClose,
                            getImageForActivity,
+                           scheduledActivities = [],
                        }) => {
-    // Utilisez useSelector pour récupérer les catégories et les activités filtrées depuis Redux
-    const categories = useSelector(getCategories);
-    const activities = useSelector(getFilteredRideData);
-
-    // État pour suivre la dernière mise à jour (optionnel)
-    const [lastUpdated, setLastUpdated] = useState(null);
-
-    // Mettre à jour l'heure de dernière mise à jour chaque fois que les activités changent
-    useEffect(() => {
-        if (dataLoaded) {
-            setLastUpdated(new Date());
-        }
-    }, [activities, dataLoaded]);
-
     return (
         <ReactNativeModal
             isVisible={isVisible}
@@ -52,55 +46,60 @@ const ActivityModal = ({
                     textStyle={styles.buttonGroupText}
                 />
                 {dataLoaded ? (
-                    <>
-                        <FlatList
-                            data={activities}
-                            keyExtractor={(item, index) => (item?._id ? item._id.toString() : index.toString())}
-                            renderItem={({ item }) => {
-                                const isSelected = selectedActivities.some(a => a._id === item._id);
-                                const category = categories[selectedCategoryIndex];
-                                const imageSource = getImageForActivity(item, category);
+                    <FlatList
+                        data={activities}
+                        keyExtractor={(item, index) =>
+                            item?._id ? item._id.toString() : index.toString()
+                        }
+                        renderItem={({ item }) => {
+                            const isSelected = selectedActivities.some(
+                                (a) => a._id === item._id
+                            );
+                            const isScheduled = scheduledActivities.some(
+                                (a) => a._id === item._id
+                            );
+                            const isDisabled = isScheduled;
+                            const category = categories[selectedCategoryIndex];
+                            const imageSource = getImageForActivity(item, category);
 
-                                return (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.activityItem,
-                                            isSelected && styles.activityItemSelected,
-                                        ]}
-                                        onPress={() => onSelectActivity(item)}
-                                    >
-                                        <View style={styles.activityInfo}>
-                                            <Image source={imageSource} style={styles.activityImage} />
-                                            <View style={styles.activityDetails}>
-                                                <Text style={styles.activityItemText}>{item.name}</Text>
-                                                {item.waitTime !== undefined && (
-                                                    <Text style={styles.waitTime}>
-                                                        Temps d'attente : {item.waitTime} min
-                                                    </Text>
-                                                )}
-                                            </View>
+                            return (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.activityItem,
+                                        isSelected && styles.activityItemSelected,
+                                        isDisabled && styles.activityItemDisabled,
+                                    ]}
+                                    onPress={() => !isDisabled && onSelectActivity(item)}
+                                    disabled={isDisabled}
+                                >
+                                    <View style={styles.activityInfo}>
+                                        <Image source={imageSource} style={styles.activityImage} />
+                                        <View style={styles.activityDetails}>
+                                            <Text style={styles.activityItemText}>{item.name}</Text>
+                                            {item.waitTime !== undefined && (
+                                                <Text style={styles.waitTime}>
+                                                    Temps d'attente : {item.waitTime} min
+                                                </Text>
+                                            )}
                                         </View>
-                                        {isSelected && <Text style={styles.selectedIndicator}>✔</Text>}
-                                    </TouchableOpacity>
-                                );
-                            }}
-                        />
-
-                        <Button
-                            title="Ajouter les activités sélectionnées"
-                            onPress={onConfirm}
-                            disabled={selectedActivities.length === 0}
-                            buttonStyle={styles.addButton}
-                        />
-                        {lastUpdated && (
-                            <Text style={styles.lastUpdated}>
-                                Dernière mise à jour : {lastUpdated.toLocaleTimeString()}
-                            </Text>
-                        )}
-                    </>
+                                    </View>
+                                    {(isSelected || isScheduled) && (
+                                        <Text style={styles.selectedIndicator}>✔</Text>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        }}
+                        contentContainerStyle={{ paddingBottom: 80 }}
+                    />
                 ) : (
                     <ActivityIndicator size="large" color="#0000ff" />
                 )}
+                <Button
+                    title="Ajouter la sélection"
+                    onPress={onConfirm}
+                    buttonStyle={styles.addButton}
+                    disabled={selectedActivities.length === 0}
+                />
             </View>
         </ReactNativeModal>
     );
@@ -152,6 +151,9 @@ const styles = StyleSheet.create({
     activityItemSelected: {
         backgroundColor: '#e6f7ff',
     },
+    activityItemDisabled: {
+        backgroundColor: '#e0e0e0',
+    },
     activityInfo: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -184,14 +186,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#007AFF',
         borderRadius: 10,
         paddingVertical: 12,
-        marginTop: 20,
-        marginHorizontal: 20,
-    },
-    lastUpdated: {
-        fontSize: 12,
-        color: '#888',
-        textAlign: 'right',
-        marginTop: 5,
+        marginTop: 10,
     },
 });
 

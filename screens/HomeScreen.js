@@ -1,4 +1,6 @@
 // HomeScreen.js
+// HomeScreen.js
+
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -7,20 +9,28 @@ import {
     TouchableOpacity,
     Text,
     Image,
-    ScrollView,
     ImageBackground,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
-import { setAttractions, setShows, setRestaurants } from '../redux/actions/actions';
+import {
+    setAttractions,
+    setShows,
+    setRestaurants,
+    setWaitTimes,
+} from '../redux/actions/actions';
 import TripPlanModal from '../components/Homescreen/TripPlanModal';
 import ActivityModal from '../components/Homescreen/ActivityModal';
 import ActivityList from '../components/Homescreen/ActivityList';
 import AttractionDetailsModal from '../components/AttractionsDetailsModal';
 import { Button } from 'react-native-elements';
-import { attractionImages, normalizeName, restaurantImagesMap, showImagesMap } from "../components/utils";
-import BottomNav from "../components/mobileNavbar";
-import BackgroundFetch from "react-native-background-fetch";
+import {
+    attractionImages,
+    normalizeName,
+    restaurantImagesMap,
+    showImagesMap,
+} from '../components/utils';
+import BottomNav from '../components/mobileNavbar';
 
 const HomeScreen = ({ navigation }) => {
     const dispatch = useDispatch();
@@ -30,7 +40,6 @@ const HomeScreen = ({ navigation }) => {
     const [duration, setDuration] = useState('');
     const [currentDate, setCurrentDate] = useState(null);
     const [isTripPlanned, setIsTripPlanned] = useState(false);
-    const parkHours = useSelector((state) => state.parkHours);
     const [availableDates, setAvailableDates] = useState([]);
     const [activities, setActivities] = useState({});
     const [isActivityModalVisible, setActivityModalVisible] = useState(false);
@@ -42,14 +51,16 @@ const HomeScreen = ({ navigation }) => {
     const [selectedAttraction, setSelectedAttraction] = useState(null);
 
     const categories = ['Attractions', 'Shows', 'Restaurants'];
-    const attractions = useSelector((state) => state.attractions.attractions);
-    const shows = useSelector((state) => state.shows.shows);
-    const restaurants = useSelector((state) => state.restaurants.restaurants);
+    const attractions = useSelector((state) => state.attractions.attractions) || [];
+    const shows = useSelector((state) => state.shows.shows) || [];
+    const restaurants = useSelector((state) => state.restaurants.restaurants) || [];
+    const waitTimes = useSelector((state) => state.waitTimes) || {};
 
     useEffect(() => {
         dispatch(setAttractions());
         dispatch(setShows());
         dispatch(setRestaurants());
+        dispatch(setWaitTimes());
     }, [dispatch]);
 
     useEffect(() => {
@@ -82,8 +93,12 @@ const HomeScreen = ({ navigation }) => {
                     setActivities(parsedData.activities || {});
                     setIsTripPlanned(parsedData.isTripPlanned || false);
                     setStartDate(parsedData.startDate ? new Date(parsedData.startDate) : null);
-                    setAvailableDates(parsedData.availableDates ? parsedData.availableDates.map(date => new Date(date)) : []);
-                    setCurrentDate(parsedData.availableDates ? new Date(parsedData.availableDates[0]) : null);
+                    setAvailableDates(
+                        parsedData.availableDates
+                            ? parsedData.availableDates.map((date) => new Date(date))
+                            : []
+                    );
+                    setCurrentDate(parsedData.currentDate ? new Date(parsedData.currentDate) : null);
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement des données du voyage:', error);
@@ -99,8 +114,8 @@ const HomeScreen = ({ navigation }) => {
                 activities,
                 isTripPlanned,
                 startDate: startDate ? startDate.toISOString() : null,
-                availableDates: availableDates ? availableDates.map(date => date.toISOString()) : [],
-                currentDate: currentDate.toISOString(),
+                availableDates: availableDates ? availableDates.map((date) => date.toISOString()) : [],
+                currentDate: currentDate ? currentDate.toISOString() : null,
             });
         }
     }, [activities, isTripPlanned, startDate, availableDates, currentDate]);
@@ -122,13 +137,17 @@ const HomeScreen = ({ navigation }) => {
 
             if (timeDifference > 0) {
                 const days = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+                const hours = Math.floor(
+                    (timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+                );
+                const minutes = Math.floor(
+                    (timeDifference % (1000 * 60 * 60)) / (1000 * 60)
+                );
                 const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
 
                 setCountdown(`${days}j ${hours}h ${minutes}m ${seconds}s`);
             } else {
-                setCountdown("Le jour est terminé");
+                setCountdown('Le jour est terminé');
             }
         };
 
@@ -136,6 +155,38 @@ const HomeScreen = ({ navigation }) => {
         const interval = setInterval(updateCountdown, 1000);
         return () => clearInterval(interval);
     }, [currentDate]);
+
+    // Mettre à jour les activités avec les temps d'attente
+    useEffect(() => {
+        if (!currentDate) return;
+
+        setActivities((prevActivities) => {
+            const dateKey = currentDate.toDateString();
+            const activitiesForDate = prevActivities[dateKey] || [];
+
+            const updatedActivities = activitiesForDate.map((activity) => {
+                const updatedWaitTime = waitTimes[activity._id];
+                return {
+                    ...activity,
+                    waitTime: updatedWaitTime !== undefined ? updatedWaitTime : activity.waitTime,
+                };
+            });
+
+            return {
+                ...prevActivities,
+                [dateKey]: updatedActivities,
+            };
+        });
+    }, [waitTimes, currentDate]);
+
+    // Mettre à jour les temps d'attente à intervalles réguliers
+    useEffect(() => {
+        const interval = setInterval(() => {
+            dispatch(setWaitTimes());
+        }, 5 * 60 * 1000); // Mise à jour toutes les 5 minutes
+
+        return () => clearInterval(interval);
+    }, [dispatch]);
 
     const saveTripData = async (data) => {
         try {
@@ -150,9 +201,9 @@ const HomeScreen = ({ navigation }) => {
             const days = parseInt(duration, 10);
             const dates = [];
             for (let i = 0; i < days; i++) {
-                const currentDate = new Date(startDate);
-                currentDate.setDate(startDate.getDate() + i);
-                dates.push(currentDate);
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                dates.push(date);
             }
             setAvailableDates(dates);
             setCurrentDate(dates[0]);
@@ -161,7 +212,8 @@ const HomeScreen = ({ navigation }) => {
                 activities,
                 isTripPlanned: true,
                 startDate: startDate ? startDate.toISOString() : null,
-                availableDates: dates.map(date => date.toISOString())
+                availableDates: dates.map((date) => date.toISOString()),
+                currentDate: dates[0] ? dates[0].toISOString() : null,
             });
         }
 
@@ -173,7 +225,9 @@ const HomeScreen = ({ navigation }) => {
 
     const handleNextDay = () => {
         if (!currentDate) return;
-        const currentIndex = availableDates.findIndex(date => date.toDateString() === currentDate?.toDateString());
+        const currentIndex = availableDates.findIndex(
+            (date) => date.toDateString() === currentDate.toDateString()
+        );
         if (currentIndex < availableDates.length - 1) {
             setCurrentDate(availableDates[currentIndex + 1]);
         }
@@ -181,7 +235,9 @@ const HomeScreen = ({ navigation }) => {
 
     const handlePreviousDay = () => {
         if (!currentDate) return;
-        const currentIndex = availableDates.findIndex(date => date.toDateString() === currentDate?.toDateString());
+        const currentIndex = availableDates.findIndex(
+            (date) => date.toDateString() === currentDate.toDateString()
+        );
         if (currentIndex > 0) {
             setCurrentDate(availableDates[currentIndex - 1]);
         }
@@ -228,16 +284,12 @@ const HomeScreen = ({ navigation }) => {
                     style={styles.headerBackground}
                     resizeMode="cover"
                 >
-                    <View style={styles.overlay}/>
+                    <View style={styles.overlay} />
                     <Text style={styles.welcomeText}>Bienvenue, {userName || 'Invité'} !</Text>
-                    {currentDate && (
-                        <Text style={styles.countdownText}>
-                            {countdown}
-                        </Text>
-                    )}
+                    {currentDate && <Text style={styles.countdownText}>{countdown}</Text>}
                 </ImageBackground>
             </View>
-            <ScrollView contentContainerStyle={styles.content}>
+            <View style={styles.content}>
                 {!isTripPlanned && (
                     <Button
                         title="Planifiez votre séjour magique"
@@ -247,82 +299,75 @@ const HomeScreen = ({ navigation }) => {
                     />
                 )}
                 {isTripPlanned && (
-                    <View style={styles.tripContainer}>
-                        <View style={styles.dateNavigator}>
-                            <TouchableOpacity
-                                onPress={handlePreviousDay}
-                                disabled={availableDates.findIndex(date => date.toDateString() === currentDate?.toDateString()) === 0}
-                            >
-                                <Image source={require('../assets/icons/left-arrow.png')} style={styles.arrowIcon}/>
-                            </TouchableOpacity>
-                            <Text style={styles.currentDateText}>{currentDate?.toLocaleDateString()}</Text>
-                            <TouchableOpacity
-                                onPress={handleNextDay}
-                                disabled={availableDates.findIndex(date => date.toDateString() === currentDate?.toDateString()) === availableDates.length - 1}
-                            >
-                                <Image source={require('../assets/icons/right-arrow.png')} style={styles.arrowIcon}/>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.parkHoursContainer}>
-                            <Text style={styles.sectionTitle}>Horaires d'ouverture</Text>
-                            {parkHours && (
-                                Array.isArray(parkHours) ? (
-                                    parkHours.map((park) => (
-                                        <View key={park.id} style={styles.parkSection}>
-                                            <Text style={styles.parkName}>{park.name}</Text>
-                                            <Text style={styles.parkTimezone}>Fuseau Horaire : {park.timezone}</Text>
-                                            <Text style={styles.parkScheduleTitle}>Horaires :</Text>
-                                            {park.schedule ? (
-                                                Object.entries(park.schedule).map(([day, hours]) => (
-                                                    <Text key={day} style={styles.parkHoursText}>
-                                                        {capitalizeFirstLetter(day)} : {hours || 'Non Disponible'}
-                                                    </Text>
-                                                ))
-                                            ) : (
-                                                <Text style={styles.parkHoursText}>Horaires non disponibles.</Text>
-                                            )}
-                                        </View>
-                                    ))
-                                ) : (
-                                    <View>
-                                        <Text style={styles.parkHoursText}>Horaires non disponibles.</Text>
-                                    </View>
-                                )
-                            )}
-                            {!parkHours && (
-                                <Text style={styles.parkHoursText}>Chargement des horaires...</Text>
-                            )}
+                    <>
+                        <View style={styles.tripContainer}>
+                            <View style={styles.dateNavigator}>
+                                <TouchableOpacity
+                                    onPress={handlePreviousDay}
+                                    disabled={
+                                        availableDates.findIndex(
+                                            (date) => date.toDateString() === currentDate?.toDateString()
+                                        ) === 0
+                                    }
+                                >
+                                    <Image
+                                        source={require('../assets/icons/left-arrow.png')}
+                                        style={styles.arrowIcon}
+                                    />
+                                </TouchableOpacity>
+                                <Text style={styles.currentDateText}>
+                                    {currentDate?.toLocaleDateString()}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={handleNextDay}
+                                    disabled={
+                                        availableDates.findIndex(
+                                            (date) => date.toDateString() === currentDate?.toDateString()
+                                        ) === availableDates.length - 1
+                                    }
+                                >
+                                    <Image
+                                        source={require('../assets/icons/right-arrow.png')}
+                                        style={styles.arrowIcon}
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                         <ActivityList
-                            activities={activities}
+                            activities={activities[currentDate ? currentDate.toDateString() : ''] || []}
                             currentDate={currentDate}
-                            onDragEnd={({ data }) => setActivities({
-                                ...activities,
-                                [currentDate.toDateString()]: data
-                            })}
+                            onDragEnd={({ data }) =>
+                                setActivities({
+                                    ...activities,
+                                    [currentDate ? currentDate.toDateString() : '']: data,
+                                })
+                            }
                             toggleActivityDone={(activity) => {
-                                setActivities(prevActivities => {
-                                    const updatedActivities = prevActivities[currentDate.toDateString()].map(act => {
-                                        if (act._id === activity._id) {
-                                            return { ...act, done: !act.done };
-                                        }
-                                        return act;
-                                    });
-                                    return { ...prevActivities, [currentDate.toDateString()]: updatedActivities };
+                                setActivities((prevActivities) => {
+                                    const dateKey = currentDate ? currentDate.toDateString() : '';
+                                    const updatedActivities =
+                                        prevActivities[dateKey]?.map((act) => {
+                                            if (act._id === activity._id) {
+                                                return { ...act, done: !act.done };
+                                            }
+                                            return act;
+                                        }) || [];
+                                    return { ...prevActivities, [dateKey]: updatedActivities };
                                 });
                             }}
                             handleDeleteActivity={(activity) => {
-                                setActivities(prevActivities => {
-                                    const updatedActivities = prevActivities[currentDate.toDateString()].filter(
-                                        act => act._id !== activity._id
-                                    );
-                                    return { ...prevActivities, [currentDate.toDateString()]: updatedActivities };
+                                setActivities((prevActivities) => {
+                                    const dateKey = currentDate ? currentDate.toDateString() : '';
+                                    const updatedActivities =
+                                        prevActivities[dateKey]?.filter((act) => act._id !== activity._id) ||
+                                        [];
+                                    return { ...prevActivities, [dateKey]: updatedActivities };
                                 });
                             }}
                             getImageForActivity={getImageForActivity}
                             onLongPress={handleLongPress}
                         />
-                    </View>
+                    </>
                 )}
                 <AttractionDetailsModal
                     visible={isAttractionModalVisible}
@@ -341,46 +386,71 @@ const HomeScreen = ({ navigation }) => {
                 <ActivityModal
                     isVisible={isActivityModalVisible}
                     categories={categories}
+                    activities={
+                        selectedCategoryIndex === 0
+                            ? attractions
+                            : selectedCategoryIndex === 1
+                                ? shows
+                                : restaurants
+                    }
                     selectedCategoryIndex={selectedCategoryIndex}
                     setSelectedCategoryIndex={setSelectedCategoryIndex}
-                    activities={selectedCategoryIndex === 0 ? attractions : selectedCategoryIndex === 1 ? shows : restaurants}
-                    selectedActivities={selectedActivitiesInModal}
+                    selectedActivities={selectedActivitiesInModal || []}
                     onSelectActivity={(activity) => {
-                        if (selectedActivitiesInModal.some(a => a._id === activity._id)) {
-                            setSelectedActivitiesInModal(prev => prev.filter(a => a._id !== activity._id));
+                        if (selectedActivitiesInModal.some((a) => a._id === activity._id)) {
+                            setSelectedActivitiesInModal((prev) =>
+                                prev.filter((a) => a._id !== activity._id)
+                            );
                         } else {
-                            setSelectedActivitiesInModal(prev => [...prev, activity]);
+                            setSelectedActivitiesInModal((prev) => [...prev, activity]);
                         }
                     }}
                     onConfirm={() => {
-                        setActivities(prevActivities => ({
-                            ...prevActivities,
-                            [currentDate.toDateString()]: [
-                                ...(prevActivities[currentDate.toDateString()] || []),
-                                ...selectedActivitiesInModal.map(activity => ({
+                        if (!currentDate) {
+                            console.error('currentDate is null');
+                            return;
+                        }
+                        setActivities((prevActivities) => {
+                            const dateKey = currentDate.toDateString();
+                            const existingActivities = prevActivities[dateKey] || [];
+                            const existingIds = existingActivities.map((a) => a._id);
+
+                            const newActivities = selectedActivitiesInModal
+                                .filter((activity) => !existingIds.includes(activity._id))
+                                .map((activity) => ({
                                     ...activity,
                                     done: false,
                                     category: categories[selectedCategoryIndex],
-                                })),
-                            ]
-                        }));
+                                }));
+
+                            return {
+                                ...prevActivities,
+                                [dateKey]: [...existingActivities, ...newActivities],
+                            };
+                        });
                         setSelectedActivitiesInModal([]);
                         setActivityModalVisible(false);
                     }}
                     dataLoaded={dataLoaded}
                     onClose={() => setActivityModalVisible(false)}
                     getImageForActivity={getImageForActivity}
+                    scheduledActivities={
+                        currentDate ? activities[currentDate.toDateString()] || [] : []
+                    }
                 />
-            </ScrollView>
+            </View>
             {isTripPlanned && (
-                <TouchableOpacity style={styles.fab} onPress={() => setActivityModalVisible(true)}>
-                    <Image source={require('../assets/icons/add.png')} style={styles.fabIcon}/>
+                <TouchableOpacity
+                    style={styles.fab}
+                    onPress={() => setActivityModalVisible(true)}
+                >
+                    <Image source={require('../assets/icons/add.png')} style={styles.fabIcon} />
                 </TouchableOpacity>
             )}
-            <BottomNav navigation={navigation}/>
+            <BottomNav navigation={navigation} />
         </SafeAreaView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     homePage: {

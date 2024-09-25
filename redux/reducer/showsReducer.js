@@ -2,6 +2,7 @@ import { SET_SHOWS, TOGGLE_FAVORITE_SHOW } from '../actions/types';
 
 const initialState = {
     shows: [],  // Liste des spectacles récupérés depuis l'API
+    isLoaded: false,  // Indique si les spectacles ont été récupérés depuis l'API
 };
 
 const showsReducer = (state = initialState, action) => {
@@ -10,6 +11,7 @@ const showsReducer = (state = initialState, action) => {
             return {
                 ...state,
                 shows: action.payload,
+                isLoaded: true,
             };
 
         case TOGGLE_FAVORITE_SHOW:

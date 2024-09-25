@@ -84,3 +84,30 @@ export const toggleFavoriteShow = (show) => ({
     type: TOGGLE_FAVORITE_SHOW,
     payload: show,
 });
+
+// actions.js
+
+export const SET_WAIT_TIMES = 'SET_WAIT_TIMES';
+
+export const setWaitTimes = () => {
+    return async (dispatch) => {
+        try {
+            const response = await fetch('https://magicjourney.fly.dev/api/attractions');
+            const data = await response.json();
+
+            // Convertir la liste des temps d'attente en un objet avec les IDs des attractions comme clés
+            const waitTimesMap = {};
+            data.forEach((attraction) => {
+                waitTimesMap[attraction._id] = attraction.waitTime;
+            });
+
+            dispatch({
+                type: SET_WAIT_TIMES,
+                payload: waitTimesMap,
+            });
+        } catch (error) {
+            console.error('Erreur lors de la récupération des temps d\'attente :', error);
+        }
+    };
+};
+
