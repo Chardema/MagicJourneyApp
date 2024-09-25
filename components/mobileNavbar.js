@@ -7,7 +7,7 @@ const BottomNav = ({ state, descriptors, navigation }) => {
 
     const getIcon = (routeName) => {
         switch (routeName) {
-            case 'Home':
+            case 'Ma journée':
                 return <FontAwesome name="home" style={styles.icon} />;
             case 'Hours':
                 return <MaterialIcons name="schedule" style={styles.icon} />;
@@ -22,9 +22,8 @@ const BottomNav = ({ state, descriptors, navigation }) => {
         }
     };
 
-    // Vérification de l'existence de state et de ses routes
     if (!state || !state.routes) {
-        return null; // Ou un fallback approprié
+        return null;
     }
 
     return (
@@ -64,12 +63,15 @@ const styles = StyleSheet.create({
         elevation: 5,
         alignItems: 'center',
         padding: 10,
+        borderTopLeftRadius: 25, // Coins arrondis pour la barre inférieure
+        borderTopRightRadius: 25,
     },
     activeNavItem: {
-        backgroundColor: '#d3d3d3',
-        borderRadius: 5,
-        height: 50,
-        width: 70,
+        height: 60,
+        width: 80,
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative', // Nécessaire pour le positionnement absolu des oreilles
     },
     navItem: {
         alignItems: 'center',
@@ -81,8 +83,42 @@ const styles = StyleSheet.create({
         fontSize: 12,
     },
     icon: {
-        fontSize: 20,
+        fontSize: 24,
         marginBottom: 5,
+    },
+    earsContainer: {
+        position: 'absolute',
+        top: -10, // Positionnement des oreilles
+        left: '50%',
+        width: 60,
+        height: 30,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        transform: [{ translateX: -30 }], // Centrer les oreilles
+    },
+    earLeft: {
+        width: 20,
+        height: 20,
+        backgroundColor: '#fff', // Même couleur que la navbar
+        borderTopLeftRadius: 20, // Bord supérieur gauche arrondi
+        borderTopRightRadius: 20, // Bord supérieur droit arrondi
+        borderWidth: 1,
+        borderColor: '#d3d3d3',
+        position: 'absolute',
+        left: -10, // Positionner à gauche de l'onglet actif
+        top: -10, // Ajuster pour qu'elle soit attachée à la navbar
+    },
+    earRight: {
+        width: 20,
+        height: 20,
+        backgroundColor: '#fff', // Même couleur que la navbar
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderWidth: 1,
+        borderColor: '#d3d3d3',
+        position: 'absolute',
+        right: -10, // Positionner à droite de l'onglet actif
+        top: -10, // Ajuster pour qu'elle soit attachée à la navbar
     },
 });
 

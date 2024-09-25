@@ -1,3 +1,4 @@
+// AttractionsScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -30,9 +31,11 @@ import {
     getRawRideData,
     getFilters,
     getSearchTerm,
-} from '../components/utils';
+    getCategories,
+} from '../redux/selector';
 import LoadingScreen from '../components/LoadingScreenData';
 import AttractionCard from '../components/AttractionCard';
+import ActivityModal from "../components/Homescreen/ActivityModal";
 
 const AttractionsScreen = () => {
     const dispatch = useDispatch();
@@ -45,7 +48,8 @@ const AttractionsScreen = () => {
     const [viewMode, setViewMode] = useState('list');
     const [previousWaitTimes, setPreviousWaitTimes] = useState({});
     const [changeTimestamps, setChangeTimestamps] = useState({});
-    const [modalOpen, setModalOpen] = useState(false);
+    const [activityModalVisible, setActivityModalVisible] = useState(false); // Pour ActivityModal
+    const [attractionModalVisible, setAttractionModalVisible] = useState(false); // Pour AttractionModal
     const [selectedAttraction, setSelectedAttraction] = useState(null);
     const [filtersModalVisible, setFiltersModalVisible] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -57,7 +61,7 @@ const AttractionsScreen = () => {
 
     // Enlève le header par défaut
     useEffect(() => {
-        navigation.setOptions({ headerShown: false });
+        navigation.setOptions({headerShown: false});
     }, [navigation]);
 
     // Fonction pour appliquer les filtres
@@ -170,7 +174,7 @@ const AttractionsScreen = () => {
 
     // Gestion du changement de filtre
     const handleFilterChange = (filter, value) => {
-        dispatch({ type: 'SET_FILTER', payload: { filter, value } });
+        dispatch({type: 'SET_FILTER', payload: {filter, value}});
     };
 
     // Gestion de la recherche
@@ -191,13 +195,54 @@ const AttractionsScreen = () => {
     // Ouverture du modal avec les détails de l'attraction
     const openModalWithAttraction = (attraction) => {
         setSelectedAttraction(attraction);
-        setModalOpen(true);
+        setAttractionModalVisible(true); // Utiliser l'état spécifique
     };
 
     // Affichage de l'écran de chargement si les données sont en cours de chargement
     if (loading || !rawRideData || !filteredRideData) {
-        return <LoadingScreen />;
+        return <LoadingScreen/>;
     }
+
+    // Fonction pour obtenir l'image d'une activité (à implémenter selon vos besoins)
+    const getImageForActivity = (activity, category) => {
+        // Exemple : retourner une image basée sur la catégorie ou l'activité
+        // Remplacez ceci par votre logique d'obtention d'images
+        return {uri: activity.imageUrl};
+    };
+
+    // État pour gérer la sélection de catégorie (à ajouter si nécessaire)
+    const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
+
+    // État pour gérer les activités sélectionnées (à ajouter si nécessaire)
+    const [selectedActivities, setSelectedActivities] = useState([]);
+
+    // Fonction pour gérer la sélection d'une activité (à ajouter si nécessaire)
+    const handleSelectActivity = (activity) => {
+        setSelectedActivities((prevSelected) => {
+            if (prevSelected.some(a => a._id === activity._id)) {
+                return prevSelected.filter(a => a._id !== activity._id);
+            } else {
+                return [...prevSelected, activity];
+            }
+        });
+    };
+
+    // Fonction pour gérer la confirmation des activités sélectionnées (à ajouter si nécessaire)
+    const handleConfirmActivities = () => {
+        // Implémentez la logique pour confirmer les activités sélectionnées
+        // Par exemple, naviguer vers une autre écran ou mettre à jour le store
+        console.log('Activités sélectionnées:', selectedActivities);
+    };
+
+    // Fonction pour ouvrir ActivityModal
+    const openActivityModal = () => {
+        setActivityModalVisible(true);
+    };
+
+    // Fonction pour fermer ActivityModal
+    const closeActivityModal = () => {
+        setActivityModalVisible(false);
+    };
 
     return (
         <View style={styles.bodyAttraction}>
@@ -212,6 +257,13 @@ const AttractionsScreen = () => {
                     title="Itinéraire"
                     onPress={() => setViewMode('map')}
                     color={viewMode === 'map' ? '#007BFF' : '#ddd'}
+                    disabled={loading}
+                />
+                {/* Ajoutez un bouton pour ouvrir ActivityModal */}
+                <Button
+                    title="Voir les activités"
+                    onPress={openActivityModal}
+                    color="#007BFF"
                     disabled={loading}
                 />
             </View>
@@ -242,7 +294,7 @@ const AttractionsScreen = () => {
                                         key={ride._id}
                                         item={ride}
                                         onToggleFavorite={handleToggleFavorite}
-                                        onDetailsPress={openModalWithAttraction}
+                                        onDetailsPress={() => openModalWithAttraction(ride)}
                                         isFavorite={isFavorite}
                                     />
                                 );
@@ -253,7 +305,7 @@ const AttractionsScreen = () => {
                     </View>
                 </ScrollView>
             ) : (
-                <View style={{ flex: 1 }}>
+                <View style={{flex: 1}}>
                     <AttractionsMap
                         attractions={filteredRideData || []}
                     />
@@ -269,29 +321,29 @@ const AttractionsScreen = () => {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Filtres</Text>
                         <View style={styles.filterOption}>
-                            <Text>Land:</Text>
+                            <Text>Land :</Text>
                             <Picker
                                 selectedValue={filters.selectedLand}
                                 onValueChange={(itemValue) => handleFilterChange('selectedLand', itemValue)}
                                 style={styles.selectOption}
                             >
-                                <Picker.Item label="Tous les lands" value="all" />
-                                <Picker.Item label="Adventureland" value="Adventureland" />
-                                <Picker.Item label="Fantasyland" value="Fantasyland" />
-                                <Picker.Item label="Frontierland" value="Frontierland" />
-                                <Picker.Item label="Discoveryland" value="Discoveryland" />
+                                <Picker.Item label="Tous les lands" value="all"/>
+                                <Picker.Item label="Adventureland" value="Adventureland"/>
+                                <Picker.Item label="Fantasyland" value="Fantasyland"/>
+                                <Picker.Item label="Frontierland" value="Frontierland"/>
+                                <Picker.Item label="Discoveryland" value="Discoveryland"/>
                             </Picker>
                         </View>
                         <View style={styles.filterOption}>
-                            <Text>Type:</Text>
+                            <Text>Type :</Text>
                             <Picker
                                 selectedValue={filters.selectedType}
                                 onValueChange={(itemValue) => handleFilterChange('selectedType', itemValue)}
                                 style={styles.selectOption}
                             >
-                                <Picker.Item label="Types d'attractions" value="all" />
-                                <Picker.Item label="Famille" value="Famille" />
-                                <Picker.Item label="Sensation" value="Sensation" />
+                                <Picker.Item label="Types d'attractions" value="all"/>
+                                <Picker.Item label="Famille" value="Famille"/>
+                                <Picker.Item label="Sensation" value="Sensation"/>
                             </Picker>
                         </View>
                         <View style={styles.checkbox}>
@@ -308,102 +360,114 @@ const AttractionsScreen = () => {
                                 onValueChange={(value) => handleFilterChange('hideClosedRides', value)}
                             />
                         </View>
-                        <Button title="Appliquer" onPress={() => setFiltersModalVisible(false)} />
+                        <Button title="Appliquer" onPress={() => setFiltersModalVisible(false)}/>
                     </View>
                 </View>
             </Modal>
-            <View style={styles.footerSpace} />
-            <BottomNav />
-            {modalOpen && (
+            <View style={styles.footerSpace}/>
+            <BottomNav/>
+            {selectedAttraction && (
                 <AttractionModal
-                    isOpen={modalOpen}
-                    onClose={() => setModalOpen(false)}
+                    isOpen={attractionModalVisible}
+                    onClose={() => setAttractionModalVisible(false)}
                     attractionDetails={selectedAttraction || {}}
                 />
             )}
+            {/* Ajout du ActivityModal connecté à Redux */}
+            <ActivityModal
+                isVisible={activityModalVisible}
+                selectedCategoryIndex={selectedCategoryIndex}
+                setSelectedCategoryIndex={setSelectedCategoryIndex}
+                selectedActivities={selectedActivities}
+                onSelectActivity={handleSelectActivity}
+                onConfirm={handleConfirmActivities}
+                dataLoaded={!loading}
+                onClose={closeActivityModal}
+                getImageForActivity={getImageForActivity}
+            />
         </View>
     );
-};
+}
 
-const styles = StyleSheet.create({
-    bodyAttraction: {
-        flex: 1,
-        backgroundColor: '#F5F5F5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 15,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        paddingTop: 40,
-        borderBottomColor: '#E0E0E0',
-    },
-    container: {
-        padding: 15,
-    },
-    footerSpace: {
-        height: 80,
-    },
-    searchAttraction: {
-        padding: 12,
-        fontSize: 16,
-        borderColor: '#E0E0E0',
-        borderWidth: 1,
-        borderRadius: 10,
-        backgroundColor: '#FFFFFF',
-        marginBottom: 20,
-    },
-    filters: {
-        marginBottom: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-    },
-    filterOption: {
-        marginBottom: 15,
-    },
-    selectOption: {
-        borderColor: '#CCC',
-        borderWidth: 1,
-        borderRadius: 8,
-        padding: 10,
-        backgroundColor: '#FFF',
-    },
-    checkbox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    noRidesMessage: {
-        textAlign: 'center',
-        color: '#999999',
-    },
-    attractionsList: {
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    modalContent: {
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 10,
-        padding: 20,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-});
+    const styles = StyleSheet.create({
+        bodyAttraction: {
+            flex: 1,
+            backgroundColor: '#F5F5F5',
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            paddingVertical: 15,
+            backgroundColor: '#FFFFFF',
+            borderBottomWidth: 1,
+            paddingTop: 40,
+            borderBottomColor: '#E0E0E0',
+        },
+        container: {
+            padding: 15,
+        },
+        footerSpace: {
+            height: 80,
+        },
+        searchAttraction: {
+            padding: 12,
+            fontSize: 16,
+            borderColor: '#E0E0E0',
+            borderWidth: 1,
+            borderRadius: 10,
+            backgroundColor: '#FFFFFF',
+            marginBottom: 20,
+        },
+        filters: {
+            marginBottom: 20,
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+        },
+        filterOption: {
+            marginBottom: 15,
+        },
+        selectOption: {
+            borderColor: '#CCC',
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: 10,
+            backgroundColor: '#FFF',
+        },
+        checkbox: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 15,
+        },
+        noRidesMessage: {
+            textAlign: 'center',
+            color: '#999999',
+        },
+        attractionsList: {
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+        },
+        modalOverlay: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+        },
+        modalContent: {
+            width: '90%',
+            backgroundColor: 'white',
+            borderRadius: 10,
+            padding: 20,
+        },
+        modalTitle: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            marginBottom: 20,
+            textAlign: 'center',
+        },
+    });
 
-export default AttractionsScreen;
+    export default AttractionsScreen;

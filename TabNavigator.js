@@ -1,3 +1,4 @@
+// TabNavigator.js
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import BottomNav from './components/mobileNavbar';
@@ -29,7 +30,7 @@ const TabNavigator = () => {
 
     return (
         <Tab.Navigator tabBar={(props) => <BottomNav {...props} />}>
-            <Tab.Screen name="Home" component={HomeScreen} />
+            <Tab.Screen name="Ma journée" component={HomeScreen} options={{headerShown: false}} />
             <Tab.Screen name="Attractions" component={AttractionsScreen} />
             <Tab.Screen name="Spectacle" component={ShowsScreen} />
             <Tab.Screen name="MagicAITrip" component={MagicAITripScreen} />

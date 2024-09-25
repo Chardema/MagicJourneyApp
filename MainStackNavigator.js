@@ -1,8 +1,8 @@
+// MainStackNavigator.js
 import React, { useEffect, useState } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import PopupSurvey from "./components/PopupSurvey";
+import SurveyScreen from "./screens/SurveySreen";
 import TabNavigator from './TabNavigator';
-import HomeScreen from './screens/HomeScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -14,9 +14,9 @@ const MainStackNavigator = () => {
     useEffect(() => {
         const checkUserPreferences = async () => {
             try {
-                const storedPreferences = await AsyncStorage.getItem('userPreferences');
+                const storedPreferences = await AsyncStorage.getItem('userResponses');
                 if (storedPreferences) {
-                    setInitialRoute('HomeScreen');
+                    setInitialRoute('MainTabs'); // Naviguer vers les onglets principaux
                 } else {
                     setInitialRoute('SurveyScreen');
                 }
@@ -37,8 +37,8 @@ const MainStackNavigator = () => {
 
     return (
         <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="SurveyScreen" component={PopupSurvey} />
-            <Stack.Screen name="HomeScreen" component={HomeScreen} />
+            <Stack.Screen name="SurveyScreen" component={SurveyScreen} />
+            {/* Retirer HomeScreen du stack */}
             <Stack.Screen name="MainTabs" component={TabNavigator} />
         </Stack.Navigator>
     );
