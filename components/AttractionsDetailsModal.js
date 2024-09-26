@@ -24,7 +24,7 @@ const AttractionDetailsModal = ({ visible, attraction, onClose }) => {
                     <Text style={styles.attractionName}>{attraction.name || 'Nom non disponible'}</Text>
                     <Text style={styles.attractionDescription}>{attraction.description || 'Description non disponible'}</Text>
                     <Text style={styles.attractionDescription}>{attraction.land || 'Description non disponible'}</Text>
-                    <Text style={styles.attractionPrice}>Prix du Fast Pass : {attraction.price !== undefined ? `${attraction.price}€` : 'Non disponible'}</Text>
+                    <Text style={styles.attractionPrice}>Prix du Premier Access: {attraction.price !== undefined ? `${attraction.price}€` : 'Non disponible'}</Text>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Text style={styles.closeButtonText}>Fermer</Text>
                     </TouchableOpacity>

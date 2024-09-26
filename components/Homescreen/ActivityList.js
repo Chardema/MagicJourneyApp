@@ -1,34 +1,51 @@
 // ActivityList.js
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, FlatList} from 'react-native';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    Animated,
+    Image,
+} from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import ScheduledActivityCard from "../ScheduleActivityCard";
 
 const ActivityList = ({
                           activities,
-                          currentDate,
                           onDragEnd,
                           toggleActivityDone,
                           handleDeleteActivity,
                           getImageForActivity,
-                          onLongPress, // Ajoutez onLongPress ici
+                          onLongPress,
                       }) => {
-    const getSortedActivities = () => {
-        const dayActivities = activities[currentDate?.toDateString()] || [];
-        const notDoneActivities = dayActivities.filter(activity => !activity.done);
-        const doneActivities = dayActivities.filter(activity => activity.done);
-        return [...notDoneActivities, ...doneActivities];
-    };
-
     const renderItem = ({ item, drag, isActive }) => {
+        const scale = new Animated.Value(1);
+
+        const onPressIn = () => {
+            Animated.spring(scale, {
+                toValue: 0.95,
+                useNativeDriver: true,
+            }).start();
+        };
+
+        const onPressOut = () => {
+            Animated.spring(scale, {
+                toValue: 1,
+                useNativeDriver: true,
+            }).start();
+        };
+
         const renderRightActions = () => (
             <View style={styles.rightActionContainer}>
                 <TouchableOpacity
                     style={styles.doneButtonContainer}
                     onPress={() => toggleActivityDone(item)}
                 >
-                    <Text style={styles.doneButtonText}>{item.done ? 'Non fait' : 'Fait'}</Text>
+                    <Text style={styles.doneButtonText}>
+                        {item.done ? 'Non fait' : 'Fait'}
+                    </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.deleteButtonContainer}
@@ -41,29 +58,43 @@ const ActivityList = ({
 
         return (
             <Swipeable renderRightActions={renderRightActions}>
-                <TouchableOpacity
-                    onLongPress={() => onLongPress(item)} // Utilisez onLongPress ici
-                    onPressIn={drag} // Utilisez onPressIn pour démarrer le drag
-                    disabled={isActive}
+                <Animated.View
                     style={[
                         styles.cardWrapper,
-                        isActive && { backgroundColor: '#f0f0f0' },
+                        {
+                            transform: [{ scale }],
+                        },
                         item.done && styles.doneActivity,
                     ]}
                 >
-                    <ScheduledActivityCard activity={item} imageSource={getImageForActivity(item, item.category)} />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        onLongPress={() => onLongPress(item)}
+                        onPressIn={() => {
+                            onPressIn();
+                        }}
+                        onPressOut={() => {
+                            onPressOut();
+                        }}
+                        onPress={() => {}}
+                        delayLongPress={200}
+                    >
+                        <ScheduledActivityCard
+                            activity={item}
+                            imageSource={getImageForActivity(item, item.category)}
+                        />
+                    </TouchableOpacity>
+                </Animated.View>
             </Swipeable>
         );
     };
 
     return (
-        <FlatList
+        <DraggableFlatList
             data={activities}
-            keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
+            keyExtractor={(item) => item._id ? item._id.toString() : item.name}
             renderItem={renderItem}
             onDragEnd={onDragEnd}
-            activationDistance={5}
+            activationDistance={20}
             dragItemOverflow={false}
             scrollEnabled={true}
             contentContainerStyle={{ paddingBottom: 50 }}
@@ -72,6 +103,12 @@ const ActivityList = ({
 };
 
 const styles = StyleSheet.create({
+    cardWrapper: {
+        backgroundColor: '#fff',
+        marginVertical: 5,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
     rightActionContainer: {
         flexDirection: 'row',
         width: 160,

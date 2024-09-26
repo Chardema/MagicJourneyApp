@@ -1,5 +1,4 @@
 // HomeScreen.js
-// HomeScreen.js
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -125,12 +124,11 @@ const HomeScreen = ({ navigation }) => {
             const now = new Date();
             let targetTime;
 
-            if (currentDate) {
-                targetTime = new Date(currentDate);
-                targetTime.setHours(8, 30, 0, 0);
+            if (startDate) {
+                targetTime = new Date(startDate);
+                targetTime.setHours(0, 0, 0, 0); // Définir l'heure à minuit
             } else {
                 targetTime = new Date();
-                targetTime.setHours(8, 30, 0, 0);
             }
 
             const timeDifference = targetTime - now;
@@ -147,14 +145,15 @@ const HomeScreen = ({ navigation }) => {
 
                 setCountdown(`${days}j ${hours}h ${minutes}m ${seconds}s`);
             } else {
-                setCountdown('Le jour est terminé');
+                setCountdown('Bon séjour !');
             }
         };
 
         updateCountdown();
         const interval = setInterval(updateCountdown, 1000);
         return () => clearInterval(interval);
-    }, [currentDate]);
+    }, [startDate]);
+
 
     // Mettre à jour les activités avec les temps d'attente
     useEffect(() => {
@@ -479,7 +478,7 @@ const styles = StyleSheet.create({
         textShadowRadius: 10,
     },
     content: {
-        flexGrow: 1,
+        flex: 1,
         padding: 20,
         backgroundColor: '#F5F5F5',
         paddingBottom: 100,
