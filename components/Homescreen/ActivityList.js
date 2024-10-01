@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import ScheduledActivityCard from "../ScheduleActivityCard";
+import ScheduledActivityCard from '../ScheduleActivityCard';
+import { isAttractionAvailable } from '../utils/attractionAvailability';
 
 const ActivityList = ({
                           activities,
@@ -19,9 +20,11 @@ const ActivityList = ({
                           handleDeleteActivity,
                           getImageForActivity,
                           onLongPress,
+                          currentDate, // Ajout de currentDate dans les props
                       }) => {
     const renderItem = ({ item, drag, isActive }) => {
         const scale = new Animated.Value(1);
+        const isAvailable = isAttractionAvailable(item, [currentDate]); // Vérification de la disponibilité
 
         const onPressIn = () => {
             Animated.spring(scale, {
@@ -65,16 +68,13 @@ const ActivityList = ({
                             transform: [{ scale }],
                         },
                         item.done && styles.doneActivity,
+                        !isAvailable && styles.unavailableActivity, // Style pour l'attraction indisponible
                     ]}
                 >
                     <TouchableOpacity
                         onLongPress={() => onLongPress(item)}
-                        onPressIn={() => {
-                            onPressIn();
-                        }}
-                        onPressOut={() => {
-                            onPressOut();
-                        }}
+                        onPressIn={onPressIn}
+                        onPressOut={onPressOut}
                         onPress={() => {}}
                         delayLongPress={200}
                     >
@@ -82,6 +82,11 @@ const ActivityList = ({
                             activity={item}
                             imageSource={getImageForActivity(item, item.category)}
                         />
+                        {!isAvailable && (
+                            <View style={styles.unavailableOverlay}>
+                                <Text style={styles.unavailableText}>En réhabilitation</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </Animated.View>
             </Swipeable>
@@ -91,7 +96,7 @@ const ActivityList = ({
     return (
         <DraggableFlatList
             data={activities}
-            keyExtractor={(item) => item._id ? item._id.toString() : item.name}
+            keyExtractor={(item) => (item._id ? item._id.toString() : item.name)}
             renderItem={renderItem}
             onDragEnd={onDragEnd}
             activationDistance={20}
@@ -108,6 +113,7 @@ const styles = StyleSheet.create({
         marginVertical: 5,
         borderRadius: 8,
         overflow: 'hidden',
+        position: 'relative',
     },
     rightActionContainer: {
         flexDirection: 'row',
@@ -137,6 +143,24 @@ const styles = StyleSheet.create({
     },
     doneActivity: {
         opacity: 0.5,
+    },
+    unavailableActivity: {
+        backgroundColor: '#FADBD8',
+    },
+    unavailableOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    unavailableText: {
+        color: '#E74C3C',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });
 

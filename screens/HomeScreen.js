@@ -8,6 +8,7 @@ import {
     Text,
     Image,
     ImageBackground,
+    ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
@@ -20,7 +21,7 @@ import {
 import TripPlanModal from '../components/Homescreen/TripPlanModal';
 import ActivityModal from '../components/Homescreen/ActivityModal';
 import ActivityList from '../components/Homescreen/ActivityList';
-import AttractionDetailsModal from '../components/AttractionsDetailsModal';
+import AttractionDetailsModal from "../components/AttractionsDetailsModal";
 import { Button } from 'react-native-elements';
 import {
     attractionImages,
@@ -30,6 +31,7 @@ import {
 } from '../components/utils';
 import BottomNav from '../components/mobileNavbar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isAttractionAvailable } from '../components/utils/attractionAvailability';
 
 const HomeScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
@@ -50,6 +52,9 @@ const HomeScreen = ({ navigation }) => {
     const [countdown, setCountdown] = useState('');
     const [isAttractionModalVisible, setAttractionModalVisible] = useState(false);
     const [selectedAttraction, setSelectedAttraction] = useState(null);
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState('morning'); // Nouvel état pour le créneau
+
+    const timeSlots = ['morning', 'afternoon', 'evening'];
 
     const categories = ['Attractions', 'Shows', 'Restaurants'];
     const attractions = useSelector((state) => state.attractions.attractions) || [];
@@ -180,19 +185,28 @@ const HomeScreen = ({ navigation }) => {
 
         setActivities((prevActivities) => {
             const dateKey = currentDate.toDateString();
-            const activitiesForDate = prevActivities[dateKey] || [];
+            const activitiesForDate = prevActivities[dateKey] || {
+                morning: [],
+                afternoon: [],
+                evening: [],
+            };
 
-            const updatedActivities = activitiesForDate.map((activity) => {
-                const updatedWaitTime = waitTimes[activity._id];
-                return {
-                    ...activity,
-                    waitTime: updatedWaitTime !== undefined ? updatedWaitTime : activity.waitTime,
-                };
-            });
+            const updateActivityList = (list) =>
+                list.map((activity) => {
+                    const updatedWaitTime = waitTimes[activity._id];
+                    return {
+                        ...activity,
+                        waitTime: updatedWaitTime !== undefined ? updatedWaitTime : activity.waitTime,
+                    };
+                });
 
             return {
                 ...prevActivities,
-                [dateKey]: updatedActivities,
+                [dateKey]: {
+                    morning: updateActivityList(activitiesForDate.morning || []),
+                    afternoon: updateActivityList(activitiesForDate.afternoon || []),
+                    evening: updateActivityList(activitiesForDate.evening || []),
+                },
             };
         });
     }, [waitTimes, currentDate]);
@@ -309,175 +323,243 @@ const HomeScreen = ({ navigation }) => {
         setAttractionModalVisible(true);
     };
 
+    const handleOpenActivityModal = () => {
+        setActivityModalVisible(true);
+    };
+
     return (
         <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-            <View style={[styles.headerContainer, { height: 250 + insets.top }]}>
-                <ImageBackground
-                    source={getImageSource()}
-                    style={[styles.headerBackground, { paddingTop: insets.top }]}
-                    resizeMode="cover"
-                >
-                    <View style={styles.overlay} />
-                    <Text style={styles.welcomeText}>Bienvenue, {userName || 'Invité'} !</Text>
-                    {currentDate && <Text style={styles.countdownText}>{countdown}</Text>}
-                    <TouchableOpacity
-                        style={styles.resetButton}
-                        onPress={clearLocalStorage}
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <View style={[styles.headerContainer, { height: 250 + insets.top }]}>
+                    <ImageBackground
+                        source={getImageSource()}
+                        style={[styles.headerBackground, { paddingTop: insets.top }]}
+                        resizeMode="cover"
                     >
-                        <Text style={styles.resetButtonText}>Réinitialiser</Text>
-                    </TouchableOpacity>
-                </ImageBackground>
-            </View>
-            <View style={styles.content}>
-                {!isTripPlanned && (
-                    <Button
-                        title="Planifiez votre séjour magique"
-                        onPress={handlePlanTrip}
-                        buttonStyle={styles.planTripButton}
-                        titleStyle={styles.planTripButtonText}
-                    />
-                )}
-                {isTripPlanned && (
-                    <>
-                        <View style={styles.tripContainer}>
-                            <View style={styles.dateNavigator}>
-                                <TouchableOpacity
-                                    onPress={handlePreviousDay}
-                                    disabled={
-                                        availableDates.findIndex(
-                                            (date) => date.toDateString() === currentDate?.toDateString()
-                                        ) === 0
-                                    }
-                                >
-                                    <Image
-                                        source={require('../assets/icons/left-arrow.png')}
-                                        style={styles.arrowIcon}
-                                    />
-                                </TouchableOpacity>
-                                <Text style={styles.currentDateText}>
-                                    {currentDate?.toLocaleDateString()}
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={handleNextDay}
-                                    disabled={
-                                        availableDates.findIndex(
-                                            (date) => date.toDateString() === currentDate?.toDateString()
-                                        ) === availableDates.length - 1
-                                    }
-                                >
-                                    <Image
-                                        source={require('../assets/icons/right-arrow.png')}
-                                        style={styles.arrowIcon}
-                                    />
-                                </TouchableOpacity>
+                        <View style={styles.overlay} />
+                        <Text style={styles.welcomeText}>Bienvenue, {userName || 'Invité'} !</Text>
+                        {currentDate && <Text style={styles.countdownText}>{countdown}</Text>}
+                        <TouchableOpacity
+                            style={styles.resetButton}
+                            onPress={clearLocalStorage}
+                        >
+                            <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                        </TouchableOpacity>
+                    </ImageBackground>
+                </View>
+                <View style={styles.content}>
+                    {!isTripPlanned && (
+                        <Button
+                            title="Planifiez votre séjour magique"
+                            onPress={handlePlanTrip}
+                            buttonStyle={styles.planTripButton}
+                            titleStyle={styles.planTripButtonText}
+                        />
+                    )}
+                    {isTripPlanned && (
+                        <>
+                            <View style={styles.tripContainer}>
+                                <View style={styles.dateNavigator}>
+                                    <TouchableOpacity
+                                        onPress={handlePreviousDay}
+                                        disabled={
+                                            availableDates.findIndex(
+                                                (date) => date.toDateString() === currentDate?.toDateString()
+                                            ) === 0
+                                        }
+                                    >
+                                        <Image
+                                            source={require('../assets/icons/left-arrow.png')}
+                                            style={styles.arrowIcon}
+                                        />
+                                    </TouchableOpacity>
+                                    <Text style={styles.currentDateText}>
+                                        {currentDate?.toLocaleDateString()}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={handleNextDay}
+                                        disabled={
+                                            availableDates.findIndex(
+                                                (date) => date.toDateString() === currentDate?.toDateString()
+                                            ) === availableDates.length - 1
+                                        }
+                                    >
+                                        <Image
+                                            source={require('../assets/icons/right-arrow.png')}
+                                            style={styles.arrowIcon}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.timeSlotContainer}>
+                                    {timeSlots.map((slot) => (
+                                        <TouchableOpacity
+                                            key={slot}
+                                            style={[
+                                                styles.timeSlotButton,
+                                                selectedTimeSlot === slot && styles.selectedTimeSlotButton,
+                                            ]}
+                                            onPress={() => setSelectedTimeSlot(slot)}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.timeSlotButtonText,
+                                                    selectedTimeSlot === slot && styles.selectedTimeSlotButtonText,
+                                                ]}
+                                            >
+                                                {slot === 'morning'
+                                                    ? 'Matin'
+                                                    : slot === 'afternoon'
+                                                        ? 'Après-midi'
+                                                        : 'Soir'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
-                        </View>
-                        <ActivityList
-                            activities={activities[currentDate ? currentDate.toDateString() : ''] || []}
-                            currentDate={currentDate}
-                            onDragEnd={({ data }) =>
-                                setActivities({
-                                    ...activities,
-                                    [currentDate ? currentDate.toDateString() : '']: data,
-                                })
-                            }
-                            toggleActivityDone={(activity) => {
-                                setActivities((prevActivities) => {
-                                    const dateKey = currentDate ? currentDate.toDateString() : '';
-                                    const updatedActivities =
-                                        prevActivities[dateKey]?.map((act) => {
+                            <ActivityList
+                                activities={
+                                    (activities[currentDate ? currentDate.toDateString() : ''] || {})[
+                                        selectedTimeSlot
+                                        ] || []
+                                }
+                                currentDate={currentDate}
+                                availableDates={availableDates}
+                                onDragEnd={({ data }) =>
+                                    setActivities({
+                                        ...activities,
+                                        [currentDate ? currentDate.toDateString() : '']: {
+                                            ...(activities[currentDate ? currentDate.toDateString() : ''] || {}),
+                                            [selectedTimeSlot]: data,
+                                        },
+                                    })
+                                }
+                                toggleActivityDone={(activity) => {
+                                    setActivities((prevActivities) => {
+                                        const dateKey = currentDate ? currentDate.toDateString() : '';
+                                        const timeSlotActivities =
+                                            prevActivities[dateKey]?.[selectedTimeSlot] || [];
+                                        const updatedActivities = timeSlotActivities.map((act) => {
                                             if (act._id === activity._id) {
                                                 return { ...act, done: !act.done };
                                             }
                                             return act;
-                                        }) || [];
-                                    return { ...prevActivities, [dateKey]: updatedActivities };
-                                });
-                            }}
-                            handleDeleteActivity={(activity) => {
-                                setActivities((prevActivities) => {
-                                    const dateKey = currentDate ? currentDate.toDateString() : '';
-                                    const updatedActivities =
-                                        prevActivities[dateKey]?.filter((act) => act._id !== activity._id) ||
-                                        [];
-                                    return { ...prevActivities, [dateKey]: updatedActivities };
-                                });
-                            }}
-                            getImageForActivity={getImageForActivity}
-                            onLongPress={handleLongPress}
-                        />
-                    </>
-                )}
-                <AttractionDetailsModal
-                    visible={isAttractionModalVisible}
-                    attraction={selectedAttraction}
-                    onClose={() => setAttractionModalVisible(false)}
-                />
-                <TripPlanModal
-                    visible={showModal}
-                    onClose={() => setShowModal(false)}
-                    onSave={handleSaveTrip}
-                    startDate={startDate}
-                    setStartDate={setStartDate}
-                    duration={duration}
-                    setDuration={setDuration}
-                />
-                <ActivityModal
-                    isVisible={isActivityModalVisible}
-                    categories={categories}
-                    activities={
-                        selectedCategoryIndex === 0
-                            ? attractions
-                            : selectedCategoryIndex === 1
-                                ? shows
-                                : restaurants
-                    }
-                    selectedCategoryIndex={selectedCategoryIndex}
-                    setSelectedCategoryIndex={setSelectedCategoryIndex}
-                    selectedActivities={selectedActivitiesInModal || []}
-                    onSelectActivity={(activity) => {
-                        if (selectedActivitiesInModal.some((a) => a._id === activity._id)) {
-                            setSelectedActivitiesInModal((prev) =>
-                                prev.filter((a) => a._id !== activity._id)
-                            );
-                        } else {
-                            setSelectedActivitiesInModal((prev) => [...prev, activity]);
+                                        });
+                                        return {
+                                            ...prevActivities,
+                                            [dateKey]: {
+                                                ...(prevActivities[dateKey] || {}),
+                                                [selectedTimeSlot]: updatedActivities,
+                                            },
+                                        };
+                                    });
+                                }}
+                                handleDeleteActivity={(activity) => {
+                                    setActivities((prevActivities) => {
+                                        const dateKey = currentDate ? currentDate.toDateString() : '';
+                                        const timeSlotActivities =
+                                            prevActivities[dateKey]?.[selectedTimeSlot] || [];
+                                        const updatedActivities = timeSlotActivities.filter(
+                                            (act) => act._id !== activity._id
+                                        );
+                                        return {
+                                            ...prevActivities,
+                                            [dateKey]: {
+                                                ...(prevActivities[dateKey] || {}),
+                                                [selectedTimeSlot]: updatedActivities,
+                                            },
+                                        };
+                                    });
+                                }}
+                                getImageForActivity={getImageForActivity}
+                                onLongPress={handleLongPress}
+                            />
+                        </>
+                    )}
+                    <AttractionDetailsModal
+                        visible={isAttractionModalVisible}
+                        attraction={selectedAttraction}
+                        onClose={() => setAttractionModalVisible(false)}
+                    />
+                    <TripPlanModal
+                        visible={showModal}
+                        onClose={() => setShowModal(false)}
+                        onSave={handleSaveTrip}
+                        startDate={startDate}
+                        setStartDate={setStartDate}
+                        duration={duration}
+                        setDuration={setDuration}
+                    />
+                    <ActivityModal
+                        isVisible={isActivityModalVisible}
+                        categories={categories}
+                        activities={
+                            selectedCategoryIndex === 0
+                                ? attractions.filter((attraction) =>
+                                    isAttractionAvailable(attraction, availableDates)
+                                )
+                                : selectedCategoryIndex === 1
+                                    ? shows.filter((show) =>
+                                        isAttractionAvailable(show, availableDates)
+                                    )
+                                    : restaurants.filter((restaurant) =>
+                                        isAttractionAvailable(restaurant, availableDates)
+                                    )
                         }
-                    }}
-                    onConfirm={() => {
-                        if (!currentDate) {
-                            console.error('currentDate is null');
-                            return;
+                        selectedCategoryIndex={selectedCategoryIndex}
+                        setSelectedCategoryIndex={setSelectedCategoryIndex}
+                        selectedActivities={selectedActivitiesInModal || []}
+                        onSelectActivity={(activity) => {
+                            if (selectedActivitiesInModal.some((a) => a._id === activity._id)) {
+                                setSelectedActivitiesInModal((prev) =>
+                                    prev.filter((a) => a._id !== activity._id)
+                                );
+                            } else {
+                                setSelectedActivitiesInModal((prev) => [...prev, activity]);
+                            }
+                        }}
+                        onConfirm={() => {
+                            if (!currentDate) {
+                                console.error('currentDate is null');
+                                return;
+                            }
+                            setActivities((prevActivities) => {
+                                const dateKey = currentDate.toDateString();
+                                const existingActivities =
+                                    prevActivities[dateKey]?.[selectedTimeSlot] || [];
+                                const existingIds = existingActivities.map((a) => a._id);
+
+                                const newActivities = selectedActivitiesInModal
+                                    .filter((activity) => !existingIds.includes(activity._id))
+                                    .map((activity) => ({
+                                        ...activity,
+                                        done: false,
+                                        category: categories[selectedCategoryIndex],
+                                    }));
+
+                                return {
+                                    ...prevActivities,
+                                    [dateKey]: {
+                                        ...(prevActivities[dateKey] || {}),
+                                        [selectedTimeSlot]: [...existingActivities, ...newActivities],
+                                    },
+                                };
+                            });
+                            setSelectedActivitiesInModal([]);
+                            setActivityModalVisible(false);
+                        }}
+                        dataLoaded={dataLoaded}
+                        onClose={() => setActivityModalVisible(false)}
+                        getImageForActivity={getImageForActivity}
+                        scheduledActivities={
+                            currentDate
+                                ? activities[currentDate.toDateString()]?.[selectedTimeSlot] || []
+                                : []
                         }
-                        setActivities((prevActivities) => {
-                            const dateKey = currentDate.toDateString();
-                            const existingActivities = prevActivities[dateKey] || [];
-                            const existingIds = existingActivities.map((a) => a._id);
-
-                            const newActivities = selectedActivitiesInModal
-                                .filter((activity) => !existingIds.includes(activity._id))
-                                .map((activity) => ({
-                                    ...activity,
-                                    done: false,
-                                    category: categories[selectedCategoryIndex],
-                                }));
-
-                            return {
-                                ...prevActivities,
-                                [dateKey]: [...existingActivities, ...newActivities],
-                            };
-                        });
-                        setSelectedActivitiesInModal([]);
-                        setActivityModalVisible(false);
-                    }}
-                    dataLoaded={dataLoaded}
-                    onClose={() => setActivityModalVisible(false)}
-                    getImageForActivity={getImageForActivity}
-                    scheduledActivities={
-                        currentDate ? activities[currentDate.toDateString()] || [] : []
-                    }
-                />
-            </View>
+                        availableDates={availableDates}
+                        selectedTimeSlot={selectedTimeSlot} // Passer le créneau sélectionné
+                    />
+                </View>
+            </ScrollView>
             {isTripPlanned && (
                 <TouchableOpacity
                     style={styles.fab}
@@ -498,13 +580,11 @@ const styles = StyleSheet.create({
     },
     headerContainer: {
         width: '100%',
-        // La hauteur est ajustée dynamiquement
     },
     headerBackground: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        // Le paddingTop est ajusté dynamiquement
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
@@ -522,7 +602,6 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 20,
         backgroundColor: '#F5F5F5',
-        paddingBottom: 100,
     },
     planTripButton: {
         backgroundColor: '#3498DB',
@@ -542,7 +621,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 5,
@@ -579,6 +658,27 @@ const styles = StyleSheet.create({
         color: '#333333',
         textAlign: 'center',
         flex: 1,
+    },
+    timeSlotContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginVertical: 10,
+    },
+    timeSlotButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        backgroundColor: '#E0E0E0',
+    },
+    selectedTimeSlotButton: {
+        backgroundColor: '#3498DB',
+    },
+    timeSlotButtonText: {
+        fontSize: 16,
+        color: '#555555',
+    },
+    selectedTimeSlotButtonText: {
+        color: '#FFFFFF',
     },
     fab: {
         position: 'absolute',

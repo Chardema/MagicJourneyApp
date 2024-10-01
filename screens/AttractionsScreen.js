@@ -1,382 +1,172 @@
 // AttractionsScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     TextInput,
-    Button,
+    FlatList,
+    TouchableOpacity,
     StyleSheet,
-    ScrollView,
-    Modal,
-    Switch,
+    ActivityIndicator,
+    Image,
 } from 'react-native';
-import { useWindowWidth } from '../components/utils';
+import { useSelector, useDispatch } from 'react-redux';
+import { setAttractions, setWaitTimes } from '../redux/actions/actions';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AttractionDetailsModal from "../components/AttractionsDetailsModal";
 import {
-    setSearchTerm,
-    toggleFavorite,
-} from '../redux/actions/actions';
-import BottomNav from '../components/mobileNavbar';
-import AttractionsMap from '../components/AttractionsMap';
-import AttractionModal from '../components/ModalAttractions';
-import { Picker } from '@react-native-picker/picker';
-import { useNavigation } from '@react-navigation/native';
-import {
-    getFilteredRideData,
-    getRawRideData,
-    getFilters,
-    getSearchTerm,
-} from '../redux/selector';
-import LoadingScreen from '../components/LoadingScreenData';
-import AttractionCard from '../components/AttractionCard';
-import ActivityModal from "../components/Homescreen/ActivityModal";
+    attractionImages,
+    normalizeName,
+} from '../components/utils';
 
-const AttractionsScreen = () => {
+const AttractionsScreen = ({ navigation }) => {
     const dispatch = useDispatch();
-    const rawRideData = useSelector(getRawRideData);
-    const searchTerm = useSelector(getSearchTerm);
-    const favorites = useSelector((state) => state.favorites.favorites);
-    const filters = useSelector(getFilters);
-    const filteredRideData = useSelector(getFilteredRideData);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedAttraction, setSelectedAttraction] = useState(null);
+    const [isAttractionModalVisible, setAttractionModalVisible] = useState(false);
+
+    const attractions = useSelector((state) => state.attractions.attractions) || [];
+    const waitTimes = useSelector((state) => state.waitTimes) || {};
     const dataLoaded = useSelector((state) => state.attractions.isLoaded);
 
-    const [viewMode, setViewMode] = useState('list');
-    const [previousWaitTimes, setPreviousWaitTimes] = useState({});
-    const [changeTimestamps, setChangeTimestamps] = useState({});
-    const [activityModalVisible, setActivityModalVisible] = useState(false); // Pour ActivityModal
-    const [attractionModalVisible, setAttractionModalVisible] = useState(false); // Pour AttractionModal
-    const [selectedAttraction, setSelectedAttraction] = useState(null);
-    const [filtersModalVisible, setFiltersModalVisible] = useState(false);
-
-    const width = useWindowWidth();
-    const navigation = useNavigation();
-
-    // Enlève le header par défaut
     useEffect(() => {
-        navigation.setOptions({ headerShown: false });
-    }, [navigation]);
+        dispatch(setAttractions());
+        dispatch(setWaitTimes());
+    }, [dispatch]);
 
-    // Fonction pour appliquer les filtres
-    const applyFilters = useCallback(
-        (data) => {
-            let filteredData = [...data];
+    useEffect(() => {
+        // Mettre à jour les temps d'attente toutes les 5 minutes
+        const interval = setInterval(() => {
+            dispatch(setWaitTimes());
+        }, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [dispatch]);
 
-            // Appliquer les filtres
-            if (filters.selectedLand !== 'all') {
-                filteredData = filteredData.filter((ride) => ride.land === filters.selectedLand);
-            }
-
-            if (filters.selectedType !== 'all') {
-                filteredData = filteredData.filter((ride) => ride.type === filters.selectedType);
-            }
-
-            if (filters.showShortWaitTimesOnly) {
-                filteredData = filteredData.filter((ride) => ride.waitTime && ride.waitTime < 40);
-            }
-
-            if (filters.hideClosedRides) {
-                filteredData = filteredData.filter((ride) => ride.status !== 'CLOSED');
-            }
-
-            if (searchTerm) {
-                filteredData = filteredData.filter((ride) =>
-                    ride.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-            }
-
-            return filteredData;
-        },
-        [filters, searchTerm]
-    );
-
-    // Gestion du changement de filtre
-    const handleFilterChange = (filter, value) => {
-        dispatch({ type: 'SET_FILTER', payload: { filter, value } });
-    };
-
-    // Gestion de la recherche
-    const handleSearchChange = (text) => {
-        dispatch(setSearchTerm(text));
-    };
-
-    // Gestion des favoris
-    const handleToggleFavorite = async (attractionId) => {
-        try {
-            if (!attractionId) return;
-            dispatch(toggleFavorite(attractionId));
-        } catch (error) {
-            console.error("Erreur lors de l'ajout aux favoris:", error);
-        }
-    };
-
-    // Ouverture du modal avec les détails de l'attraction
-    const openModalWithAttraction = (attraction) => {
-        setSelectedAttraction(attraction);
-        setAttractionModalVisible(true); // Utiliser l'état spécifique
-    };
-
-    // Affichage de l'écran de chargement si les données sont en cours de chargement
-    if (!dataLoaded || !rawRideData || !filteredRideData) {
-        return <LoadingScreen />;
+    if (!dataLoaded) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#3498DB" />
+            </View>
+        );
     }
 
-    // Fonction pour obtenir l'image d'une activité (à implémenter selon vos besoins)
-    const getImageForActivity = (activity, category) => {
-        // Exemple : retourner une image basée sur la catégorie ou l'activité
-        // Remplacez ceci par votre logique d'obtention d'images
-        return { uri: activity.imageUrl };
+    const filteredAttractions = attractions.filter((attraction) =>
+        attraction.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getImageForAttraction = (attraction) => {
+        if (!attraction || !attraction.name) {
+            return require('../assets/default.jpg');
+        }
+
+        const normalizedName = normalizeName(attraction.name);
+        return attractionImages[normalizedName] || attractionImages['default.jpg'];
     };
 
-    // État pour gérer la sélection de catégorie (à ajouter si nécessaire)
-    const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
+    const renderItem = ({ item }) => {
+        const waitTime = waitTimes[item._id] !== undefined ? waitTimes[item._id] : 'N/A';
 
-    // État pour gérer les activités sélectionnées (à ajouter si nécessaire)
-    const [selectedActivities, setSelectedActivities] = useState([]);
-
-    // Fonction pour gérer la sélection d'une activité (à ajouter si nécessaire)
-    const handleSelectActivity = (activity) => {
-        setSelectedActivities((prevSelected) => {
-            if (prevSelected.some((a) => a._id === activity._id)) {
-                return prevSelected.filter((a) => a._id !== activity._id);
-            } else {
-                return [...prevSelected, activity];
-            }
-        });
-    };
-
-    // Fonction pour gérer la confirmation des activités sélectionnées (à ajouter si nécessaire)
-    const handleConfirmActivities = () => {
-        // Implémentez la logique pour confirmer les activités sélectionnées
-        // Par exemple, naviguer vers une autre écran ou mettre à jour le store
-        console.log('Activités sélectionnées:', selectedActivities);
-    };
-
-    // Fonction pour ouvrir ActivityModal
-    const openActivityModal = () => {
-        setActivityModalVisible(true);
-    };
-
-    // Fonction pour fermer ActivityModal
-    const closeActivityModal = () => {
-        setActivityModalVisible(false);
+        return (
+            <TouchableOpacity
+                style={styles.itemContainer}
+                onLongPress={() => {
+                    setSelectedAttraction(item);
+                    setAttractionModalVisible(true);
+                }}
+            >
+                <Image
+                    source={getImageForAttraction(item)}
+                    style={styles.itemImage}
+                />
+                <View style={styles.itemTextContainer}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    <Text style={styles.itemWaitTime}>
+                        Temps d'attente : {waitTime !== null ? `${waitTime} min` : 'N/A'}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        );
     };
 
     return (
-        <View style={styles.bodyAttraction}>
-            <View style={styles.header}>
-                <Button
-                    title="Liste"
-                    onPress={() => setViewMode('list')}
-                    color={viewMode === 'list' ? '#007BFF' : '#ddd'}
-                />
-                <Button
-                    title="Itinéraire"
-                    onPress={() => setViewMode('map')}
-                    color={viewMode === 'map' ? '#007BFF' : '#ddd'}
-                />
-                {/* Ajoutez un bouton pour ouvrir ActivityModal */}
-                <Button
-                    title="Voir les activités"
-                    onPress={openActivityModal}
-                    color="#007BFF"
-                />
-            </View>
-            {viewMode === 'list' ? (
-                <ScrollView style={styles.container}>
-                    <TextInput
-                        placeholder="Quelle attraction aujourd'hui ?"
-                        style={styles.searchAttraction}
-                        value={searchTerm}
-                        onChangeText={handleSearchChange}
-                    />
-                    <Button
-                        title="Filtrer"
-                        onPress={() => setFiltersModalVisible(true)}
-                    />
-                    <View style={styles.attractionsList}>
-                        {filteredRideData && filteredRideData.length > 0 ? (
-                            filteredRideData.map((ride) => {
-                                const isFavorite = favorites.some((fav) => fav._id === ride._id);
-                                const previousWaitTime = previousWaitTimes[ride._id]?.previousWaitTime;
-                                const currentWaitTime = ride.waitTime;
-                                const changeTimestamp = changeTimestamps[ride._id];
-
-                                return (
-                                    <AttractionCard
-                                        key={ride._id}
-                                        item={ride}
-                                        onToggleFavorite={handleToggleFavorite}
-                                        onDetailsPress={() => openModalWithAttraction(ride)}
-                                        isFavorite={isFavorite}
-                                    />
-                                );
-                            })
-                        ) : (
-                            <Text>Aucune attraction correspondant à la recherche.</Text>
-                        )}
-                    </View>
-                </ScrollView>
-            ) : (
-                <View style={{ flex: 1 }}>
-                    <AttractionsMap attractions={filteredRideData || []} />
-                </View>
-            )}
-            <Modal
-                visible={filtersModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setFiltersModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Filtres</Text>
-                        <View style={styles.filterOption}>
-                            <Text>Land :</Text>
-                            <Picker
-                                selectedValue={filters.selectedLand}
-                                onValueChange={(itemValue) => handleFilterChange('selectedLand', itemValue)}
-                                style={styles.selectOption}
-                            >
-                                <Picker.Item label="Tous les lands" value="all" />
-                                <Picker.Item label="Adventureland" value="Adventureland" />
-                                <Picker.Item label="Fantasyland" value="Fantasyland" />
-                                <Picker.Item label="Frontierland" value="Frontierland" />
-                                <Picker.Item label="Discoveryland" value="Discoveryland" />
-                            </Picker>
-                        </View>
-                        <View style={styles.filterOption}>
-                            <Text>Type :</Text>
-                            <Picker
-                                selectedValue={filters.selectedType}
-                                onValueChange={(itemValue) => handleFilterChange('selectedType', itemValue)}
-                                style={styles.selectOption}
-                            >
-                                <Picker.Item label="Types d'attractions" value="all" />
-                                <Picker.Item label="Famille" value="Famille" />
-                                <Picker.Item label="Sensation" value="Sensation" />
-                            </Picker>
-                        </View>
-                        <View style={styles.checkbox}>
-                            <Text>Moins de 40 min d'attente</Text>
-                            <Switch
-                                value={filters.showShortWaitTimesOnly}
-                                onValueChange={(value) => handleFilterChange('showShortWaitTimesOnly', value)}
-                            />
-                        </View>
-                        <View style={styles.checkbox}>
-                            <Text>Masquer les attractions fermées</Text>
-                            <Switch
-                                value={filters.hideClosedRides}
-                                onValueChange={(value) => handleFilterChange('hideClosedRides', value)}
-                            />
-                        </View>
-                        <Button title="Appliquer" onPress={() => setFiltersModalVisible(false)} />
-                    </View>
-                </View>
-            </Modal>
-            <View style={styles.footerSpace} />
-            <BottomNav />
-            {selectedAttraction && (
-                <AttractionModal
-                    isOpen={attractionModalVisible}
-                    onClose={() => setAttractionModalVisible(false)}
-                    attractionDetails={selectedAttraction || {}}
-                />
-            )}
-            {/* Ajout du ActivityModal connecté à Redux */}
-            <ActivityModal
-                isVisible={activityModalVisible}
-                selectedCategoryIndex={selectedCategoryIndex}
-                setSelectedCategoryIndex={setSelectedCategoryIndex}
-                selectedActivities={selectedActivities}
-                onSelectActivity={handleSelectActivity}
-                onConfirm={handleConfirmActivities}
-                dataLoaded={dataLoaded}
-                onClose={closeActivityModal}
-                getImageForActivity={getImageForActivity}
+        <SafeAreaView style={styles.container}>
+            <TextInput
+                placeholder="Rechercher une attraction..."
+                style={styles.searchInput}
+                value={searchTerm}
+                onChangeText={setSearchTerm}
             />
-        </View>
+            <FlatList
+                data={filteredAttractions}
+                renderItem={renderItem}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.listContent}
+            />
+            <AttractionDetailsModal
+                visible={isAttractionModalVisible}
+                attraction={selectedAttraction}
+                onClose={() => setAttractionModalVisible(false)}
+            />
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    bodyAttraction: {
-        flex: 1,
-        backgroundColor: '#F5F5F5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingVertical: 15,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        paddingTop: 40,
-        borderBottomColor: '#E0E0E0',
-    },
     container: {
-        padding: 15,
+        flex: 1,
+        backgroundColor: '#FFFFFF',
     },
-    footerSpace: {
-        height: 80,
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#333333',
+        textAlign: 'center',
     },
-    searchAttraction: {
+    searchInput: {
         padding: 12,
         fontSize: 16,
-        borderColor: '#E0E0E0',
-        borderWidth: 1,
-        borderRadius: 10,
-        backgroundColor: '#FFFFFF',
-        marginBottom: 20,
-    },
-    filters: {
-        marginBottom: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-    },
-    filterOption: {
-        marginBottom: 15,
-    },
-    selectOption: {
-        borderColor: '#CCC',
+        borderColor: '#DDDDDD',
         borderWidth: 1,
         borderRadius: 8,
-        padding: 10,
-        backgroundColor: '#FFF',
+        marginHorizontal: 10,
+        marginVertical: 10,
     },
-    checkbox: {
+    listContent: {
+        paddingBottom: 100,
+    },
+    itemContainer: {
         flexDirection: 'row',
+        padding: 15,
+        backgroundColor: '#F8F8F8',
+        marginVertical: 5,
+        marginHorizontal: 10,
+        borderRadius: 10,
         alignItems: 'center',
-        marginBottom: 15,
     },
-    noRidesMessage: {
-        textAlign: 'center',
-        color: '#999999',
+    itemImage: {
+        width: 70,
+        height: 70,
+        borderRadius: 8,
+        marginRight: 15,
     },
-    attractionsList: {
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
+    itemTextContainer: {
+        flex: 1,
     },
-    modalOverlay: {
+    itemName: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333333',
+    },
+    itemWaitTime: {
+        fontSize: 16,
+        color: '#555555',
+        marginTop: 5,
+    },
+    loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    modalContent: {
-        width: '90%',
-        backgroundColor: 'white',
-        borderRadius: 10,
-        padding: 20,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
     },
 });
 

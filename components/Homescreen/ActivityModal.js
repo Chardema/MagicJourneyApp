@@ -1,8 +1,10 @@
-import React from 'react';
+// ActivityModal.js
+
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    FlatList,
+    SectionList,
     TouchableOpacity,
     Image,
     StyleSheet,
@@ -10,6 +12,10 @@ import {
 } from 'react-native';
 import { Button, ButtonGroup } from 'react-native-elements';
 import ReactNativeModal from 'react-native-modal';
+import {
+    isAttractionAvailable,
+    getAvailableDatesForAttraction,
+} from '../utils/attractionAvailability';
 
 const ActivityModal = ({
                            isVisible,
@@ -24,7 +30,38 @@ const ActivityModal = ({
                            onClose,
                            getImageForActivity,
                            scheduledActivities = [],
+                           availableDates,
                        }) => {
+    const [sections, setSections] = useState([]);
+
+    useEffect(() => {
+        // Filtrer les activités en fonction de leur disponibilité
+        const filteredActivities = activities.filter((activity) =>
+            isAttractionAvailable(activity, availableDates)
+        );
+
+        // Grouper les activités par 'land'
+        const groupedActivities = filteredActivities.reduce((groups, activity) => {
+            const land = activity.land || 'Autres';
+            if (!groups[land]) {
+                groups[land] = [];
+            }
+            groups[land].push(activity);
+            return groups;
+        }, {});
+
+        // Convertir les groupes en sections
+        const sectionsData = Object.keys(groupedActivities).map((land) => ({
+            title: land,
+            data: groupedActivities[land],
+        }));
+
+        // Trier les sections par nom de land
+        sectionsData.sort((a, b) => a.title.localeCompare(b.title));
+
+        setSections(sectionsData);
+    }, [activities, availableDates]);
+
     return (
         <ReactNativeModal
             isVisible={isVisible}
@@ -46,8 +83,8 @@ const ActivityModal = ({
                     textStyle={styles.buttonGroupText}
                 />
                 {dataLoaded ? (
-                    <FlatList
-                        data={activities}
+                    <SectionList
+                        sections={sections}
                         keyExtractor={(item, index) =>
                             item?._id ? item._id.toString() : index.toString()
                         }
@@ -76,6 +113,11 @@ const ActivityModal = ({
                                         <Image source={imageSource} style={styles.activityImage} />
                                         <View style={styles.activityDetails}>
                                             <Text style={styles.activityItemText}>{item.name}</Text>
+                                            {item.rehab && (
+                                                <Text style={styles.unavailableText}>
+                                                    En réhabilitation
+                                                </Text>
+                                            )}
                                             {item.waitTime !== undefined && (
                                                 <Text style={styles.waitTime}>
                                                     Temps d'attente : {item.waitTime} min
@@ -89,6 +131,11 @@ const ActivityModal = ({
                                 </TouchableOpacity>
                             );
                         }}
+                        renderSectionHeader={({ section: { title } }) => (
+                            <View style={styles.sectionHeaderContainer}>
+                                <Text style={styles.sectionHeaderText}>{title}</Text>
+                            </View>
+                        )}
                         contentContainerStyle={{ paddingBottom: 80 }}
                     />
                 ) : (
@@ -141,6 +188,18 @@ const styles = StyleSheet.create({
     buttonGroupText: {
         fontSize: 16,
     },
+    sectionHeaderContainer: {
+        backgroundColor: '#F0F0F0',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    sectionHeaderText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#333',
+    },
     activityItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -172,6 +231,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#333',
         fontWeight: '500',
+    },
+    unavailableText: {
+        fontSize: 14,
+        color: '#E74C3C',
     },
     waitTime: {
         fontSize: 14,

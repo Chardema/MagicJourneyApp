@@ -31,5 +31,13 @@
         "distribution": "store"
       }
     }
+  },
+  "submit": {
+    "testflight": {
+      "ios": {
+        "appleId": "christo59@pm.me",
+        "ascAppId": "6720764989"
+      }
+    }
   }
 }

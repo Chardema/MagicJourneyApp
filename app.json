@@ -2,7 +2,7 @@
   "expo": {
     "name": "MagicJourney",
     "slug": "MagicJourney",
-    "version": "1.0.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
