@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import {
     View,
-    SafeAreaView,
     StyleSheet,
     TouchableOpacity,
     Text,
@@ -30,11 +29,14 @@ import {
     showImagesMap,
 } from '../components/utils';
 import BottomNav from '../components/mobileNavbar';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HomeScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
     const [userName, setUserName] = useState('');
     const [showModal, setShowModal] = useState(false);
+    const [favoriteAttraction, setFavoriteAttraction] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [duration, setDuration] = useState('');
     const [currentDate, setCurrentDate] = useState(null);
@@ -75,6 +77,7 @@ const HomeScreen = ({ navigation }) => {
                 if (storedResponses) {
                     const parsedResponses = JSON.parse(storedResponses);
                     setUserName(parsedResponses.name || '');
+                    setFavoriteAttraction(parsedResponses.favoriteAttraction || '');
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement des données utilisateur:', error);
@@ -82,6 +85,23 @@ const HomeScreen = ({ navigation }) => {
         };
         loadUserData();
     }, []);
+
+    // Fonction pour effacer le localStorage
+    const clearLocalStorage = async () => {
+        try {
+            await AsyncStorage.clear();
+            setIsTripPlanned(false);
+            setActivities({});
+            setUserName('');
+            setStartDate(null);
+            setDuration('');
+            setAvailableDates([]);
+            setCurrentDate(null);
+            console.log('Local storage cleared');
+        } catch (error) {
+            console.error('Erreur lors de la réinitialisation du localStorage:', error);
+        }
+    };
 
     useEffect(() => {
         const loadTripData = async () => {
@@ -154,7 +174,6 @@ const HomeScreen = ({ navigation }) => {
         return () => clearInterval(interval);
     }, [startDate]);
 
-
     // Mettre à jour les activités avec les temps d'attente
     useEffect(() => {
         if (!currentDate) return;
@@ -192,6 +211,21 @@ const HomeScreen = ({ navigation }) => {
             await AsyncStorage.setItem('tripData', JSON.stringify(data));
         } catch (error) {
             console.error('Erreur lors de la sauvegarde des données du voyage:', error);
+        }
+    };
+
+    const getImageSource = () => {
+        switch (favoriteAttraction) {
+            case 'Buzz Lightyear Laser Blast':
+                return require('../assets/buzz_lightyear.jpg');
+            case 'It’s a Small World':
+                return require('../assets/small_world.jpeg');
+            case 'La Tour de la Terreur':
+                return require('../assets/tour_terreur.jpg');
+            case 'Pirates des Caraïbes':
+                return require('../assets/pirates_des_caraibes.jpg');
+            default:
+                return require('../assets/default.jpg');
         }
     };
 
@@ -276,16 +310,22 @@ const HomeScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.homePage}>
-            <View style={styles.headerContainer}>
+        <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+            <View style={[styles.headerContainer, { height: 250 + insets.top }]}>
                 <ImageBackground
-                    source={require('../assets/BigThunderMountain.jpg')}
-                    style={styles.headerBackground}
+                    source={getImageSource()}
+                    style={[styles.headerBackground, { paddingTop: insets.top }]}
                     resizeMode="cover"
                 >
                     <View style={styles.overlay} />
                     <Text style={styles.welcomeText}>Bienvenue, {userName || 'Invité'} !</Text>
                     {currentDate && <Text style={styles.countdownText}>{countdown}</Text>}
+                    <TouchableOpacity
+                        style={styles.resetButton}
+                        onPress={clearLocalStorage}
+                    >
+                        <Text style={styles.resetButtonText}>Réinitialiser</Text>
+                    </TouchableOpacity>
                 </ImageBackground>
             </View>
             <View style={styles.content}>
@@ -452,18 +492,19 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    homePage: {
+    safeArea: {
         flex: 1,
         backgroundColor: '#F5F5F5',
     },
     headerContainer: {
         width: '100%',
-        height: 200,
+        // La hauteur est ajustée dynamiquement
     },
     headerBackground: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        // Le paddingTop est ajusté dynamiquement
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
@@ -539,53 +580,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         flex: 1,
     },
-    parkHoursContainer: {
-        marginVertical: 20,
-        backgroundColor: '#FFFFFF',
-        padding: 20,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 4,
-        width: '100%',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#3498DB',
-        marginBottom: 10,
-    },
-    parkSection: {
-        marginBottom: 15,
-        padding: 15,
-        backgroundColor: '#F8F8F8',
-        borderRadius: 10,
-    },
-    parkName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#3498DB',
-        marginBottom: 5,
-    },
-    parkTimezone: {
-        fontSize: 14,
-        color: '#666666',
-        marginBottom: 5,
-    },
-    parkScheduleTitle: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#333333',
-        marginBottom: 5,
-    },
-    parkHoursText: {
-        fontSize: 14,
-        color: '#666666',
-        textAlign: 'left',
-        paddingHorizontal: 10,
-    },
     fab: {
         position: 'absolute',
         width: 60,
@@ -602,6 +596,19 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         tintColor: 'white',
+    },
+    resetButton: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        padding: 15,
+        backgroundColor: '#E74C3C',
+        borderRadius: 10,
+    },
+    resetButtonText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });
 

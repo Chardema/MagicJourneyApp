@@ -1,9 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, Animated, Modal } from 'react-native';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    Image,
+    TextInput,
+    Animated,
+    Modal,
+    ScrollView,
+    Dimensions
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import Icon from "react-native-vector-icons/FontAwesome";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+const windowHeight = Dimensions.get('window').height;
 
 const SurveyScreen = () => {
     const [currentQuestionId, setCurrentQuestionId] = useState('welcome');
@@ -60,54 +72,19 @@ const SurveyScreen = () => {
             question: 'Commençons par personnaliser ton application. Quel est ton prénom ?',
             placeholder: 'Entrez votre prénom',
             key: 'name',
-            next: 'visitedDisney',
+            next: 'favoriteAttraction',
         },
         {
-            id: 'visitedDisney',
+            id: 'favoriteAttraction',
             type: 'choice',
-            question: (responses) => `Bienvenue ${responses.name || ''}, as-tu déjà visité Disneyland Paris ?`,
+            question: (responses) => `Bonjour ${responses.name || ''}, quelle est ton attraction préférée ?`,
             options: [
-                { text: 'Oui', value: 'Oui', next: 'alreadyVisited' },
-                { text: 'Non', value: 'Non', next: 'neverVisited' },
+                { text: 'Buzz Lightyear Laser Blast', value: 'Buzz Lightyear Laser Blast' },
+                { text: 'It’s a Small World', value: 'It’s a Small World' },
+                { text: 'La Tour de la Terreur', value: 'La Tour de la Terreur' },
+                { text: 'Pirates des Caraïbes', value: 'Pirates des Caraïbes' },
             ],
-            key: 'visitedDisney',
-        },
-        {
-            id: 'alreadyVisited',
-            type: 'choice',
-            question: 'Combien de fois es-tu venu ?',
-            options: [
-                { text: '1 fois', value: '1 fois', next: 'parkStyle' },
-                { text: '2-5 fois', value: '2-5 fois', next: 'parkStyle' },
-                { text: '6-10 fois', value: '6-10 fois', next: 'parkStyle' },
-            ],
-            key: 'visitCount',
-        },
-        {
-            id: 'parkStyle',
-            type: 'choice',
-            question: 'Plutôt rencontre personnage ou grosse journée ?',
-            options: [
-                { text: 'Rencontre personnage', value: 'Rencontre personnage', next: 'end' },
-                { text: 'Grosse journée', value: 'Grosse journée', next: 'end' },
-            ],
-            key: 'parkStyle',
-        },
-        {
-            id: 'neverVisited',
-            type: 'choice',
-            question: 'Prévois-tu de venir ou cherches-tu simplement des infos ?',
-            options: [
-                { text: 'Je prévois de venir', value: 'Prévoyez de venir', next: 'visitDate' },
-                { text: 'Je cherche des infos', value: 'Cherche des infos', next: 'end' },
-            ],
-            key: 'visitPlan',
-        },
-        {
-            id: 'visitDate',
-            type: 'date',
-            question: 'Quand prévois-tu de venir ?',
-            key: 'visitDate',
+            key: 'favoriteAttraction',
             next: 'end',
         },
         {
@@ -158,7 +135,7 @@ const SurveyScreen = () => {
     if (!currentQuestion) return null;
 
     return (
-        <View style={styles.pageContainer}>
+        <ScrollView style={styles.pageContainer}>
             <Image source={require('../assets/viewingarea.jpg')} style={styles.headerImage} />
             <View style={styles.contentContainer}>
                 {currentQuestion.type === 'info' && (
@@ -190,7 +167,7 @@ const SurveyScreen = () => {
                             style={styles.input}
                             placeholder={currentQuestion.placeholder}
                             value={responses[currentQuestion.key] || ''}
-                            onChangeText={(text) => setResponses({ ...responses, [currentQuestion.key]: text })}
+                            onChangeText={(text) => setResponses({ ...responses, [currentQuestion.key]: text })} // Update value in responses
                         />
                         <TouchableOpacity
                             onPress={() => {
@@ -224,49 +201,6 @@ const SurveyScreen = () => {
                     </>
                 )}
 
-                {currentQuestion.type === 'date' && (
-                    <>
-                        <Text style={styles.question}>{currentQuestion.question}</Text>
-                        <TouchableOpacity
-                            onPress={() => setShowDatePicker(true)}
-                            style={styles.answerButton}
-                        >
-                            <Text style={styles.buttonText}>Choisir une date</Text>
-                        </TouchableOpacity>
-                        {responses.visitDate && (
-                            <Text style={styles.selectedDateText}>
-                                {new Date(responses.visitDate).toLocaleDateString()}
-                            </Text>
-                        )}
-                        {showDatePicker && (
-                            <Modal transparent={true} visible={showDatePicker} animationType="slide">
-                                <View style={styles.modalBackground}>
-                                    <View style={styles.modalContainer}>
-                                        <DateTimePicker
-                                            mode="date"
-                                            display="default"
-                                            value={visitDate ? new Date(visitDate) : new Date()}
-                                            onChange={(event, date) => {
-                                                if (date) {
-                                                    setVisitDate(date.toISOString());
-                                                    handleAnswer(currentQuestion.key, date.toISOString(), currentQuestion.next);
-                                                }
-                                                setShowDatePicker(false);
-                                            }}
-                                        />
-                                        <TouchableOpacity
-                                            onPress={() => setShowDatePicker(false)}
-                                            style={styles.answerButton}
-                                        >
-                                            <Text style={styles.buttonText}>Fermer</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </Modal>
-                        )}
-                    </>
-                )}
-
                 {currentQuestion.type === 'end' && (
                     <>
                         <Text style={styles.title}>Merci d'avoir répondu au questionnaire !</Text>
@@ -282,7 +216,7 @@ const SurveyScreen = () => {
                     </>
                 )}
             </View>
-        </View>
+        </ScrollView>
     );
 };
 
@@ -293,7 +227,7 @@ const styles = StyleSheet.create({
     },
     headerImage: {
         width: '100%',
-        height: '30%',
+        height: windowHeight * 0.25,
         resizeMode: 'cover',
     },
     contentContainer: {
@@ -367,23 +301,6 @@ const styles = StyleSheet.create({
         padding: 10,
         marginBottom: 20,
         fontSize: 16,
-    },
-    selectedDateText: {
-        fontSize: 16,
-        color: '#333',
-        textAlign: 'center',
-        marginVertical: 10,
-    },
-    modalBackground: {
-        flex: 1,
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContainer: {
-        marginHorizontal: 20,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 20,
     },
 });
 
