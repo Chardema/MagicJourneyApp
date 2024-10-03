@@ -42,7 +42,6 @@ const ScheduledActivityCard = ({ activity }) => {
             </View>
             {activity.waitTime !== undefined && (
                 <View style={styles.waitTimeContainer}>
-                    <Text style={styles.waitTime}>Temps d'attente</Text>
                     <Text style={styles.waitTimeLarge}>{waitTimeDisplay}</Text>
                 </View>
             )}
@@ -53,7 +52,6 @@ const ScheduledActivityCard = ({ activity }) => {
 const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 10,
         marginVertical: 5,

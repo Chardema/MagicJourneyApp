@@ -82,7 +82,7 @@ const AttractionsScreen = ({ navigation }) => {
                 <View style={styles.itemTextContainer}>
                     <Text style={styles.itemName}>{item.name}</Text>
                     <Text style={styles.itemWaitTime}>
-                        Temps d'attente : {waitTime !== null ? `${waitTime} min` : 'N/A'}
+                       {waitTime !== null ? `${waitTime} min` : 'N/A'}
                     </Text>
                 </View>
             </TouchableOpacity>

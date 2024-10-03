@@ -1,10 +1,21 @@
 // TripPlanModal.js
+
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import { Button } from 'react-native-elements';
+import { Button, CheckBox } from 'react-native-elements';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
-const TripPlanModal = ({ visible, onClose, onSave, startDate, setStartDate, duration, setDuration }) => {
+const TripPlanModal = ({
+                           visible,
+                           onClose,
+                           onSave,
+                           startDate,
+                           setStartDate,
+                           duration,
+                           setDuration,
+                           hasExtraMagicHours,
+                           setHasExtraMagicHours,
+                       }) => {
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
     const showDatePicker = () => setDatePickerVisibility(true);
@@ -37,6 +48,13 @@ const TripPlanModal = ({ visible, onClose, onSave, startDate, setStartDate, dura
                         onChangeText={setDuration}
                         keyboardType="numeric"
                         style={styles.input}
+                    />
+                    <CheckBox
+                        title="Avez-vous accès aux Extra Magic Hours ?"
+                        checked={hasExtraMagicHours}
+                        onPress={() => setHasExtraMagicHours(!hasExtraMagicHours)}
+                        containerStyle={styles.checkboxContainer}
+                        textStyle={styles.checkboxText}
                     />
                     <Button title="Valider" onPress={onSave} buttonStyle={styles.validateButton} />
                 </View>
@@ -86,24 +104,24 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlign: 'center',
     },
+    checkboxContainer: {
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        margin: 0,
+        marginLeft: 0,
+        marginRight: 0,
+        marginBottom: 20,
+    },
+    checkboxText: {
+        fontSize: 16,
+        color: '#333',
+    },
     validateButton: {
         backgroundColor: '#34C759',
         borderRadius: 10,
         paddingVertical: 12,
         marginTop: 20,
         marginHorizontal: 20,
-    },
-    closeButton: {
-        marginTop: 10,
-        backgroundColor: '#FF3B30',
-        paddingVertical: 12,
-        paddingHorizontal: 30,
-        borderRadius: 10,
-    },
-    closeButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
     },
 });
 

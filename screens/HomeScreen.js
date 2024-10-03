@@ -9,6 +9,7 @@ import {
     Image,
     ImageBackground,
     ScrollView,
+    Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
@@ -52,7 +53,8 @@ const HomeScreen = ({ navigation }) => {
     const [countdown, setCountdown] = useState('');
     const [isAttractionModalVisible, setAttractionModalVisible] = useState(false);
     const [selectedAttraction, setSelectedAttraction] = useState(null);
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState('morning'); // Nouvel état pour le créneau
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState('morning');
+    const [hasExtraMagicHours, setHasExtraMagicHours] = useState(false);
 
     const timeSlots = ['morning', 'afternoon', 'evening'];
 
@@ -61,6 +63,13 @@ const HomeScreen = ({ navigation }) => {
     const shows = useSelector((state) => state.shows.shows) || [];
     const restaurants = useSelector((state) => state.restaurants.restaurants) || [];
     const waitTimes = useSelector((state) => state.waitTimes) || {};
+
+    const [parkSchedules, setParkSchedules] = useState({});
+
+    const parkIds = {
+        'Disneyland Park': 'dae968d5-630d-4719-8b06-3d107e944401',
+        'Walt Disney Studios Park': 'ca888437-ebb4-4d50-aed2-d227f7096968',
+    };
 
     useEffect(() => {
         dispatch(setAttractions());
@@ -91,6 +100,30 @@ const HomeScreen = ({ navigation }) => {
         loadUserData();
     }, []);
 
+    // Fonction pour récupérer les horaires du parc
+    const fetchParkSchedules = async () => {
+        try {
+            const dates = availableDates.map(date => date.toISOString().split('T')[0]);
+            const parkScheduleData = {};
+
+            for (const [parkName, parkId] of Object.entries(parkIds)) {
+                const response = await fetch(`https://api.themeparks.wiki/v1/entity/${parkId}/schedule`);
+                const data = await response.json();
+
+                // Filtrer les horaires pour les dates sélectionnées
+                const schedules = data.schedule.filter(schedule =>
+                    dates.includes(schedule.date)
+                );
+
+                parkScheduleData[parkName] = schedules;
+            }
+
+            setParkSchedules(parkScheduleData);
+        } catch (error) {
+            console.error('Erreur lors de la récupération des horaires du parc:', error);
+        }
+    };
+
     // Fonction pour effacer le localStorage
     const clearLocalStorage = async () => {
         try {
@@ -102,6 +135,7 @@ const HomeScreen = ({ navigation }) => {
             setDuration('');
             setAvailableDates([]);
             setCurrentDate(null);
+            setParkSchedules({});
             console.log('Local storage cleared');
         } catch (error) {
             console.error('Erreur lors de la réinitialisation du localStorage:', error);
@@ -123,6 +157,15 @@ const HomeScreen = ({ navigation }) => {
                             : []
                     );
                     setCurrentDate(parsedData.currentDate ? new Date(parsedData.currentDate) : null);
+
+                    // Gérer hasExtraMagicHours
+                    if ('hasExtraMagicHours' in parsedData) {
+                        setHasExtraMagicHours(parsedData.hasExtraMagicHours);
+                    } else {
+                        setHasExtraMagicHours(false);
+                    }
+                } else {
+                    setHasExtraMagicHours(false);
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement des données du voyage:', error);
@@ -140,9 +183,10 @@ const HomeScreen = ({ navigation }) => {
                 startDate: startDate ? startDate.toISOString() : null,
                 availableDates: availableDates ? availableDates.map((date) => date.toISOString()) : [],
                 currentDate: currentDate ? currentDate.toISOString() : null,
+                hasExtraMagicHours,
             });
         }
-    }, [activities, isTripPlanned, startDate, availableDates, currentDate]);
+    }, [activities, isTripPlanned, startDate, availableDates, currentDate, hasExtraMagicHours]);
 
     useEffect(() => {
         const updateCountdown = () => {
@@ -151,7 +195,7 @@ const HomeScreen = ({ navigation }) => {
 
             if (startDate) {
                 targetTime = new Date(startDate);
-                targetTime.setHours(0, 0, 0, 0); // Définir l'heure à minuit
+                targetTime.setHours(0, 0, 0, 0);
             } else {
                 targetTime = new Date();
             }
@@ -255,17 +299,12 @@ const HomeScreen = ({ navigation }) => {
             setAvailableDates(dates);
             setCurrentDate(dates[0]);
 
-            saveTripData({
-                activities,
-                isTripPlanned: true,
-                startDate: startDate ? startDate.toISOString() : null,
-                availableDates: dates.map((date) => date.toISOString()),
-                currentDate: dates[0] ? dates[0].toISOString() : null,
-            });
-        }
+            // Récupérer les horaires du parc après avoir défini les dates disponibles
+            fetchParkSchedules();
 
-        setIsTripPlanned(true);
-        setShowModal(false);
+            setIsTripPlanned(true);
+            setShowModal(false);
+        }
     };
 
     const handlePlanTrip = () => setShowModal(true);
@@ -325,6 +364,124 @@ const HomeScreen = ({ navigation }) => {
 
     const handleOpenActivityModal = () => {
         setActivityModalVisible(true);
+    };
+
+    // Fonction pour obtenir les heures d'ouverture et de fermeture du parc pour une date donnée
+    const getParkOperatingHours = (parkName, date) => {
+        if (!parkSchedules[parkName]) return null;
+
+        const dateString = date.toISOString().split('T')[0];
+        const schedulesForDate = parkSchedules[parkName].filter(
+            (schedule) => schedule.date === dateString
+        );
+
+        let operatingHours = schedulesForDate.find(
+            (schedule) => schedule.type === 'OPERATING'
+        );
+
+        if (!operatingHours) return null;
+
+        let openingTime = new Date(operatingHours.openingTime);
+        let closingTime = new Date(operatingHours.closingTime);
+
+        if (hasExtraMagicHours) {
+            const extraHours = schedulesForDate.find(
+                (schedule) => schedule.type === 'EXTRA_HOURS'
+            );
+            if (extraHours) {
+                openingTime = new Date(extraHours.openingTime);
+            }
+        }
+
+        return { openingTime, closingTime };
+    };
+
+    // Fonction pour calculer le planning
+    const calculateSchedule = (activitiesForDay) => {
+        const dateKey = currentDate.toDateString();
+
+        const activities = activitiesForDay[selectedTimeSlot] || [];
+
+        if (activities.length === 0) return activitiesForDay;
+
+        // Obtenir le parc de la première activité
+        const firstActivity = activities[0];
+        const parkName = firstActivity.parkName || 'Disneyland Park'; // Par défaut
+
+        const operatingHours = getParkOperatingHours(parkName, currentDate);
+
+        if (!operatingHours) {
+            Alert.alert(
+                'Horaires non disponibles',
+                "Les horaires d'ouverture du parc ne sont pas disponibles pour cette date."
+            );
+            return activitiesForDay;
+        }
+
+        let currentTime = new Date(operatingHours.openingTime);
+
+        const updatedActivities = activities.map((activity) => {
+            const waitTime = waitTimes[activity._id] || 0;
+            const duration = activity.duration || 30;
+            const travelTime = activity.travelTime || 10;
+
+            const plannedStartTime = new Date(
+                currentTime.getTime() + travelTime * 60000 + waitTime * 60000
+            );
+            const plannedEndTime = new Date(
+                plannedStartTime.getTime() + duration * 60000
+            );
+
+            currentTime = new Date(plannedEndTime);
+
+            return {
+                ...activity,
+                plannedStartTime,
+                plannedEndTime,
+            };
+        });
+
+        return {
+            ...activitiesForDay,
+            [selectedTimeSlot]: updatedActivities,
+        };
+    };
+
+    // Retirer 'activities' du tableau des dépendances pour éviter la boucle infinie
+    useEffect(() => {
+        if (!currentDate) return;
+
+        const dateKey = currentDate.toDateString();
+        const activitiesForDay = activities[dateKey] || {};
+
+        const updatedActivitiesForDay = calculateSchedule(activitiesForDay);
+
+        setActivities((prevActivities) => ({
+            ...prevActivities,
+            [dateKey]: updatedActivitiesForDay,
+        }));
+    }, [waitTimes, currentDate, hasExtraMagicHours]);
+
+    const handleCompleteActivity = (activityId) => {
+        setActivities((prevActivities) => {
+            const dateKey = currentDate ? currentDate.toDateString() : '';
+            const updatedTimeSlotActivities = (prevActivities[dateKey]?.[selectedTimeSlot] || []).map(
+                (activity) =>
+                    activity._id === activityId ? { ...activity, completed: true } : activity
+            );
+
+            // Recalculer le planning après la mise à jour des activités
+            const activitiesForDay = {
+                ...prevActivities[dateKey],
+                [selectedTimeSlot]: updatedTimeSlotActivities,
+            };
+            const updatedActivitiesForDay = calculateSchedule(activitiesForDay);
+
+            return {
+                ...prevActivities,
+                [dateKey]: updatedActivitiesForDay,
+            };
+        });
     };
 
     return (
@@ -472,6 +629,13 @@ const HomeScreen = ({ navigation }) => {
                                 }}
                                 getImageForActivity={getImageForActivity}
                                 onLongPress={handleLongPress}
+                                onCompleteActivity={handleCompleteActivity}
+                            />
+                            <Button
+                                title="Modifier votre voyage"
+                                onPress={() => setShowModal(true)}
+                                buttonStyle={styles.modifyTripButton}
+                                titleStyle={styles.modifyTripButtonText}
                             />
                         </>
                     )}
@@ -488,6 +652,8 @@ const HomeScreen = ({ navigation }) => {
                         setStartDate={setStartDate}
                         duration={duration}
                         setDuration={setDuration}
+                        hasExtraMagicHours={hasExtraMagicHours}
+                        setHasExtraMagicHours={setHasExtraMagicHours}
                     />
                     <ActivityModal
                         isVisible={isActivityModalVisible}
@@ -556,7 +722,7 @@ const HomeScreen = ({ navigation }) => {
                                 : []
                         }
                         availableDates={availableDates}
-                        selectedTimeSlot={selectedTimeSlot} // Passer le créneau sélectionné
+                        selectedTimeSlot={selectedTimeSlot}
                     />
                 </View>
             </ScrollView>
@@ -598,6 +764,27 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: -1, height: 1 },
         textShadowRadius: 10,
     },
+    countdownText: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10,
+    },
+    resetButton: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        padding: 15,
+        backgroundColor: '#E74C3C',
+        borderRadius: 10,
+    },
+    resetButtonText: {
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
     content: {
         flex: 1,
         padding: 20,
@@ -626,14 +813,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         marginTop: -20,
-    },
-    countdownText: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: { width: -1, height: 1 },
-        textShadowRadius: 10,
+        backgroundColor: '#FFFFFF',
     },
     dateNavigator: {
         flexDirection: 'row',
@@ -697,18 +877,19 @@ const styles = StyleSheet.create({
         height: 24,
         tintColor: 'white',
     },
-    resetButton: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        padding: 15,
-        backgroundColor: '#E74C3C',
-        borderRadius: 10,
+    modifyTripButton: {
+        backgroundColor: '#3498DB',
+        borderRadius: 8,
+        paddingVertical: 12,
+        marginHorizontal: 20,
+        elevation: 2,
+        marginTop: 10,
     },
-    resetButtonText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
+    modifyTripButtonText: {
         fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        textTransform: 'uppercase',
     },
 });
 

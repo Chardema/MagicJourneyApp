@@ -9,14 +9,10 @@ const BottomNav = ({ state, descriptors, navigation }) => {
         switch (routeName) {
             case 'Ma journée':
                 return <FontAwesome name="home" style={styles.icon} />;
-            case 'Hours':
-                return <MaterialIcons name="schedule" style={styles.icon} />;
             case 'Attractions':
                 return <MaterialIcons name="attractions" style={styles.icon} />;
             case 'Spectacle':
                 return <MaterialCommunityIcons name="star-outline" style={styles.icon} />;
-            case 'MagicAITrip':
-                return <FontAwesome name="magic" style={styles.icon} />;
             default:
                 return null;
         }
@@ -52,26 +48,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         position: 'absolute',
-        width: '100%',
-        bottom: 0,
-        height: 80,
+        width: '100%', // Réduire la largeur pour l'effet flottant
+        bottom: 20, // Mettre un espace de 20px pour donner l'effet flottant
+        height: 70,
         backgroundColor: '#fff',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 10 }, // Ombre plus prononcée pour l'effet de flottement
+        shadowOpacity: 0.3, // Augmenter l'opacité de l'ombre
+        shadowRadius: 10,
+        elevation: 10, // Renforcer l'ombre pour Android
         alignItems: 'center',
         padding: 10,
-        borderTopLeftRadius: 25, // Coins arrondis pour la barre inférieure
-        borderTopRightRadius: 25,
+        borderRadius: 40, // Coins arrondis sur tous les côtés pour accentuer l'effet flottant
     },
     activeNavItem: {
         height: 60,
         width: 80,
         alignItems: 'center',
         justifyContent: 'center',
-        position: 'relative', // Nécessaire pour le positionnement absolu des oreilles
+        position: 'relative',
     },
     navItem: {
         alignItems: 'center',
@@ -85,41 +80,8 @@ const styles = StyleSheet.create({
     icon: {
         fontSize: 24,
         marginBottom: 5,
-    },
-    earsContainer: {
-        position: 'absolute',
-        top: -10, // Positionnement des oreilles
-        left: '50%',
-        width: 60,
-        height: 30,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        transform: [{ translateX: -30 }], // Centrer les oreilles
-    },
-    earLeft: {
-        width: 20,
-        height: 20,
-        backgroundColor: '#fff', // Même couleur que la navbar
-        borderTopLeftRadius: 20, // Bord supérieur gauche arrondi
-        borderTopRightRadius: 20, // Bord supérieur droit arrondi
-        borderWidth: 1,
-        borderColor: '#d3d3d3',
-        position: 'absolute',
-        left: -10, // Positionner à gauche de l'onglet actif
-        top: -10, // Ajuster pour qu'elle soit attachée à la navbar
-    },
-    earRight: {
-        width: 20,
-        height: 20,
-        backgroundColor: '#fff', // Même couleur que la navbar
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        borderWidth: 1,
-        borderColor: '#d3d3d3',
-        position: 'absolute',
-        right: -10, // Positionner à droite de l'onglet actif
-        top: -10, // Ajuster pour qu'elle soit attachée à la navbar
-    },
+    }
 });
+
 
 export default BottomNav;

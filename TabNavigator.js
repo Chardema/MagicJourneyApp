@@ -33,7 +33,6 @@ const TabNavigator = () => {
             <Tab.Screen name="Ma journée" component={HomeScreen} options={{headerShown: false}} />
             <Tab.Screen name="Attractions" component={AttractionsScreen} />
             <Tab.Screen name="Spectacle" component={ShowsScreen} />
-            <Tab.Screen name="MagicAITrip" component={MagicAITripScreen} />
         </Tab.Navigator>
     );
 };
