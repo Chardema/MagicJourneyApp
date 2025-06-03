@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "MagicJourney",
+    "slug": "MagicJourney",
+    "version": "0.1.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.reactjs.native.example.MagicJourney",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "This app uses notifications to notify you about favorites.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.anonx505.MagicJourney"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8f57c079-18d1-418b-80d4-a540f2e05816"
+      }
+    },
+    "plugins": ["./plugins/withDevClient"]
+  }
+}
