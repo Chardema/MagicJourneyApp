@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import theme from '../theme';
 import { Button, CheckBox } from 'react-native-elements';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
     },
     modalContainer: {
         width: '90%',
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.card,
         borderRadius: 20,
         padding: 20,
         alignItems: 'center',
@@ -86,19 +87,19 @@ const styles = StyleSheet.create({
     datePickerButton: {
         marginBottom: 20,
         padding: 15,
-        backgroundColor: '#F2F2F7',
+        backgroundColor: theme.colors.background,
         borderRadius: 10,
         width: '100%',
     },
     datePickerText: {
         fontSize: 16,
-        color: '#333',
+        color: theme.colors.text,
         textAlign: 'center',
     },
     input: {
         width: '100%',
         padding: 15,
-        borderColor: '#ccc',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         borderRadius: 10,
         marginBottom: 20,
@@ -114,10 +115,10 @@ const styles = StyleSheet.create({
     },
     checkboxText: {
         fontSize: 16,
-        color: '#333',
+        color: theme.colors.text,
     },
     validateButton: {
-        backgroundColor: '#34C759',
+        backgroundColor: theme.colors.primary,
         borderRadius: 10,
         paddingVertical: 12,
         marginTop: 20,

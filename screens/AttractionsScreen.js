@@ -11,6 +11,7 @@ import {
     ActivityIndicator,
     Image,
 } from 'react-native';
+import theme from '../components/theme';
 import { useSelector, useDispatch } from 'react-redux';
 import { setAttractions, setWaitTimes } from '../redux/actions/actions';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -115,18 +116,18 @@ const AttractionsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.colors.background,
     },
     headerTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#333333',
+        color: theme.colors.text,
         textAlign: 'center',
     },
     searchInput: {
         padding: 12,
         fontSize: 16,
-        borderColor: '#DDDDDD',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         borderRadius: 8,
         marginHorizontal: 10,
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     itemContainer: {
         flexDirection: 'row',
         padding: 15,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: theme.colors.card,
         marginVertical: 5,
         marginHorizontal: 10,
         borderRadius: 10,
@@ -156,11 +157,11 @@ const styles = StyleSheet.create({
     itemName: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333333',
+        color: theme.colors.text,
     },
     itemWaitTime: {
         fontSize: 16,
-        color: '#555555',
+        color: theme.colors.accent,
         marginTop: 5,
     },
     loadingContainer: {
