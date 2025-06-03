@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import theme from './theme';
 import { FontAwesome } from '@expo/vector-icons';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
         width: '100%', // Réduire la largeur pour l'effet flottant
         bottom: 20, // Mettre un espace de 20px pour donner l'effet flottant
         height: 70,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 }, // Ombre plus prononcée pour l'effet de flottement
         shadowOpacity: 0.3, // Augmenter l'opacité de l'ombre
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     text: {
-        color: '#333',
+        color: theme.colors.text,
         fontSize: 12,
     },
     icon: {

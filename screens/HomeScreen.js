@@ -11,6 +11,7 @@ import {
     ScrollView,
     Alert,
 } from 'react-native';
+import theme from '../components/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -742,7 +743,7 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.background,
     },
     headerContainer: {
         width: '100%',
@@ -788,10 +789,10 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 20,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.background,
     },
     planTripButton: {
-        backgroundColor: '#3498DB',
+        backgroundColor: theme.colors.primary,
         borderRadius: 8,
         paddingVertical: 12,
         marginHorizontal: 20,
@@ -813,29 +814,29 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         marginTop: -20,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.colors.card,
     },
     dateNavigator: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#E9F7FE',
+        backgroundColor: theme.colors.card,
         paddingHorizontal: 15,
         paddingVertical: 10,
         borderRadius: 10,
         marginVertical: 15,
         borderWidth: 1,
-        borderColor: '#D4E6F1',
+        borderColor: theme.colors.border,
     },
     arrowIcon: {
         width: 30,
         height: 30,
-        tintColor: '#3498DB',
+        tintColor: theme.colors.primary,
     },
     currentDateText: {
         fontSize: 18,
         fontWeight: '500',
-        color: '#333333',
+        color: theme.colors.text,
         textAlign: 'center',
         flex: 1,
     },
@@ -848,14 +849,14 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: theme.colors.border,
     },
     selectedTimeSlotButton: {
-        backgroundColor: '#3498DB',
+        backgroundColor: theme.colors.primary,
     },
     timeSlotButtonText: {
         fontSize: 16,
-        color: '#555555',
+        color: theme.colors.text,
     },
     selectedTimeSlotButtonText: {
         color: '#FFFFFF',
@@ -865,7 +866,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#3498DB',
+        backgroundColor: theme.colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         right: 20,
@@ -878,7 +879,7 @@ const styles = StyleSheet.create({
         tintColor: 'white',
     },
     modifyTripButton: {
-        backgroundColor: '#3498DB',
+        backgroundColor: theme.colors.primary,
         borderRadius: 8,
         paddingVertical: 12,
         marginHorizontal: 20,
